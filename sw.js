@@ -1,5 +1,5 @@
 // MotoNav service worker — bump VERSION on every release so phones pick up the update.
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 const SHELL_CACHE = 'motonav-shell-' + VERSION;
 const TILE_CACHE = 'motonav-tiles';
 const TILE_LIMIT = 3000;

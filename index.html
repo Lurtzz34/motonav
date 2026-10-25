@@ -20,7 +20,7 @@
 /* Layout: full-screen map; idle = search at top; preview = bottom sheet; nav = maneuver card top + instrument bar bottom */
 :root{
   --amber:#ffb000; --amber-ink:#1a1200;
-  --route:#1e6bff; --danger:#e5484d; --ok:#1fa463;
+  --route:#1e6bff; --danger:#e5484d; --ok:#1fa463; --toll:#a24bf0;
   --panel:#ffffff; --panel-2:#eef1f4; --ink:#0d1117; --muted:#5a6470; --line:#d6dbe1;
   --card:#10151b; --card-2:#1b222b; --card-ink:#ffffff; --card-muted:#9fabb8;
   --shadow:0 6px 24px rgba(10,15,25,.22);
@@ -175,6 +175,15 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 .stat span{display:block;margin-top:4px;font-size:13px;color:var(--muted);font-weight:600}
 .s-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .s-actions .wide{grid-column:1 / -1}
+.toll-row{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 12px;border-radius:12px;background:color-mix(in srgb,var(--toll) 12%,var(--panel));text-align:left;font-weight:600;font-size:15px}
+.toll-row .toll-sw{width:22px;height:6px;border-radius:3px;background:var(--toll);flex:none}
+.toll-row span{flex:1;min-width:0}
+.toll-row b{font:700 22px/1 var(--f-num);font-variant-numeric:tabular-nums}
+.toll-row em{font-style:normal;font-size:13px;color:var(--muted)}
+.toll-row.free{background:var(--panel-2);color:var(--muted)}
+.toll-row.free .toll-sw{background:var(--ok)}
+.row .fee{flex:none;font:700 22px/1 var(--f-num);font-variant-numeric:tabular-nums;padding-right:4px}
+.row.total{background:transparent;border-top:2px solid var(--line);border-radius:0;min-height:52px}
 .s-msg{color:var(--muted);padding:6px 2px;margin:0;line-height:1.45}
 @media (prefers-reduced-motion:reduce){.micon .ico{transition:none}}
 @media (min-width:700px){.mdist{font-size:64px}}
@@ -206,6 +215,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
     <button id="p-close" class="iconbtn" aria-label="Kapat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
   </div>
   <div id="p-sum" class="p-sum msg">Rota hesaplanıyor…</div>
+  <button id="p-toll" class="toll-row" hidden></button>
   <div id="p-alts" hidden></div>
   <div class="seg" id="p-style" role="group" aria-label="Rota tipi">
     <button data-style="fast">Hızlı</button><button data-style="short">Kısa</button><button data-style="curvy">Virajlı</button>
@@ -254,7 +264,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 
 <script>
 'use strict';
-const VERSION = '1.1.0';
+const VERSION = '1.2.0';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -383,9 +393,13 @@ map.on('style.load', () => {
     map.addLayer({id:'route-casing', type:'line', source:'route',
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':'#ffffff','line-width':['interpolate',['linear'],['zoom'],8,5,14,11,18,24]}});
+    map.addSource('route-toll', {type:'geojson', data:{type:'FeatureCollection', features:[]}});
     map.addLayer({id:'route-line', type:'line', source:'route',
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':mode === 'night' ? '#4d8dff' : '#1e6bff','line-width':['interpolate',['linear'],['zoom'],8,3,14,7,18,16]}});
+    map.addLayer({id:'route-toll-line', type:'line', source:'route-toll',
+      layout:{'line-join':'round','line-cap':'round'},
+      paint:{'line-color':'#a24bf0','line-width':['interpolate',['linear'],['zoom'],8,3,14,7,18,16]}});
   }
   drawRoute();
 });
@@ -396,6 +410,7 @@ function drawRoute(){
   src.setData(route ? {type:'Feature', geometry:{type:'LineString', coordinates:route.coords}} : {type:'FeatureCollection', features:[]});
   const alts = navigating ? [] : routes.map((r, i) => ({type:'Feature', properties:{i}, geometry:{type:'LineString', coordinates:r.coords}})).filter(f => f.properties.i !== selRoute);
   map.getSource('route-alt').setData({type:'FeatureCollection', features:alts});
+  map.getSource('route-toll').setData({type:'FeatureCollection', features:tollFeatures(route)});
   if(trackPts) map.getSource('track').setData({type:'Feature', geometry:{type:'LineString', coordinates:trackPts}});
 }
 let trackPts = null;
@@ -656,7 +671,9 @@ function parseValhallaTrip(trip, names){
       mans.push({type:m.type, text:m.instruction,
         alert:m.verbal_transition_alert_instruction || m.verbal_pre_transition_instruction || m.instruction,
         pre:m.verbal_pre_transition_instruction || m.instruction,
-        street:(m.street_names || []).join(', '), idx, exitCount:m.roundabout_exit_count || 0});
+        street:(m.street_names || []).join(', '), idx, exitCount:m.roundabout_exit_count || 0,
+        toll:!!m.toll, ferry:!!m.ferry || m.type === 28 || m.type === 29, end:m.end_shape_index + off,
+        refs:[...(m.street_names || []), ...(m.begin_street_names || [])].join(' | ')});
     });
   });
   return buildRoute(coords, mans, trip.summary.time, 'valhalla');
@@ -698,7 +715,9 @@ function parseOsrm(rt, names){
     else if(!m.modifier || m.modifier === 'straight'){ type = 8; text = 'Düz devam edin' + on; }
     else { type = OSRM_TYPE[m.modifier] || 8; const w = OSRM_MOD[m.modifier];
       text = capTR(w) + (m.type === 'fork' || m.type === 'off ramp' ? 'dan devam edin' : ' dönün') + on; }
-    mans.push({type, text, alert:text, pre:text, street:st.name || '', idx:ci, exitCount:m.exit || 0});
+    const toll = (st.intersections || []).some(x => (x.classes || []).includes('toll'));
+    mans.push({type, text, alert:text, pre:text, street:st.name || '', idx:ci, exitCount:m.exit || 0,
+      toll, ferry:st.mode === 'ferry', refs:[st.ref, st.name].filter(Boolean).join(' | ')});
   }));
   return buildRoute(coords, mans, rt.duration, 'osrm');
 }
@@ -706,7 +725,10 @@ function buildRoute(coords, mans, time, source){
   const cum = [0];
   for(let i = 1; i < coords.length; i++)
     cum.push(cum[i-1] + hav({lat:coords[i-1][1], lon:coords[i-1][0]}, {lat:coords[i][1], lon:coords[i][0]}));
-  return {coords, cum, total:cum[cum.length-1], mans, time, source};
+  const last = coords.length - 1;
+  mans.forEach((m, k) => { if(m.end == null || m.end < m.idx) m.end = k < mans.length - 1 ? mans[k+1].idx : last; m.end = Math.min(m.end, last); });
+  const tollSegs = mans.filter(m => m.toll && m.end > m.idx).map(m => ({from:cum[m.idx], to:cum[m.end], refs:m.refs || '', idx:m.idx, end:m.end}));
+  return {coords, cum, total:cum[last], mans, time, source, tollSegs};
 }
 function projectOnRoute(R, f, hint){
   const c = R.coords; if(c.length < 2) return {i:0, off:0, along:0};
@@ -735,6 +757,154 @@ function pointAt(R, d){
   return {lon:a[0]+(b[0]-a[0])*t, lat:a[1]+(b[1]-a[1])*t};
 }
 
+/* ================= tolls (motorcycle, class 6) ================= */
+// Source: KGM 2026 tariff tables (1 July 2026 for bridges and BOT motorways; KGM-run motorways keep the 1 Jan 2026 tariff).
+const TOLL_TARIFF = 'Temmuz 2026';
+const FACILITIES = [
+  {id:'b15', name:'15 Temmuz Şehitler Köprüsü', re:/15 Temmuz Şehitler Köprüsü/i, fee:25, eastOnly:true, approx:[29.0347, 41.0453]},
+  {id:'fsm', name:'Fatih Sultan Mehmet Köprüsü', re:/Fatih Sultan Mehmet Köprüsü/i, fee:25, eastOnly:true, approx:[29.0614, 41.0911]},
+  {id:'yss', name:'Yavuz Sultan Selim Köprüsü', re:/Yavuz Sultan Selim Köprüsü/i, fee:75, approx:[29.1117, 41.2019]},
+  {id:'ogz', name:'Osmangazi Köprüsü', re:/Osmangazi Köprüsü/i, fee:820, approx:[29.5147, 40.7519]},
+  {id:'c15', name:'1915 Çanakkale Köprüsü', re:/1915 Çanakkale Köprüsü/i, fee:295, approx:[26.6436, 40.3364]},
+  {id:'avr', name:'Avrasya Tüneli', re:/Avrasya Tüneli/i, fee:257.40, night:128.70, approx:[28.9950, 41.0000]}
+];
+// TL per km for class 6, capped at the full-length fare. Distance-based, so the result is an estimate.
+const NETWORKS = {
+  'O-1':{name:'15 Temmuz Köprüsü bağlantısı', rate:0}, 'O-2':{name:'FSM Köprüsü bağlantısı', rate:0}, 'AVR':{name:'Avrasya Tüneli bağlantısı', rate:0},
+  'O-3':{name:'Avrupa Otoyolu (İstanbul–Edirne)', rate:0.30, max:69},
+  'O-4':{name:'Anadolu Otoyolu', rate:0.36, max:136},
+  'O-5':{name:'İstanbul–İzmir Otoyolu', rate:2.5, max:975},
+  'O-6':{name:'Malkara–Çanakkale Otoyolu', rate:0.9, max:80},
+  'O-7':{name:'Kuzey Marmara Otoyolu', rate:2.6, min:45},
+  'O-21':{name:'Ankara–Niğde Otoyolu', rate:0.95, max:315},
+  'O-31':{name:'İzmir–Aydın Otoyolu', rate:0.33, max:33},
+  'O-31D':{name:'Aydın–Denizli Otoyolu', rate:0.74, max:120},
+  'O-32':{name:'İzmir–Çeşme Otoyolu', rate:0.27, max:20},
+  'O-33':{name:'Menemen–Aliağa–Çandarlı Otoyolu', rate:0.9, max:50},
+  'O-51':{name:'Niğde–Mersin–Adana Otoyolu', rate:0.4, max:94},
+  'O-52':{name:'Adana–Gaziantep–Şanlıurfa Otoyolu', rate:0.24, max:90},
+  'def':{name:'Diğer ücretli yol', rate:0.5}
+};
+const NAME_NET = [[/Avrasya/i,'AVR'], [/15 Temmuz|Boğaziçi Köprüsü/i,'O-1'], [/Fatih Sultan Mehmet/i,'O-2'],
+  [/Kuzey Marmara|Kuzey Çevre|Yavuz Sultan Selim/i,'O-7'], [/Anadolu Otoyolu/i,'O-4'], [/Avrupa Otoyolu|Edirne/i,'O-3'],
+  [/İzmir.*İstanbul|İstanbul.*İzmir|Gebze.*İzmir|Osmangazi/i,'O-5'], [/Ankara.*Niğde/i,'O-21'], [/Malkara|1915/i,'O-6'],
+  [/Çeşme/i,'O-32'], [/Aydın.*Denizli/i,'O-31D'], [/İzmir.*Aydın/i,'O-31'], [/Çandarlı|Aliağa/i,'O-33']];
+function classifyNet(refs, pt){
+  let key = null;
+  const m = (refs || '').toLocaleUpperCase('tr').match(/(?:^|[^A-Z0-9])O[- ]?(\d{1,2})(?![0-9])/);
+  if(m) key = 'O-' + (+m[1]);
+  if(!key) for(const [re, k] of NAME_NET) if(re.test(refs || '')){ key = k; break; }
+  if(key === 'O-31' && pt.lon > 27.85) key = 'O-31D';
+  if(key === 'O-21' && pt.lat < 37.9) key = 'O-51';
+  return NETWORKS[key] ? key : 'def';
+}
+let facGeom = store.get('facGeom', null), facLoading = null;
+function loadFacilities(){
+  if(facGeom && Date.now() - facGeom.t < 180*864e5) return Promise.resolve(facGeom);
+  if(facLoading) return facLoading;
+  const names = FACILITIES.map(f => f.name).join('|');
+  const q = `[out:json][timeout:40];way["highway"]["name"~"${names}"](39.9,25.9,41.5,29.9);out geom;`;
+  facLoading = fetchT('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 45000)
+    .then(r => r.json()).then(j => {
+      const g = {t:Date.now()};
+      (j.elements || []).forEach(w => {
+        const nm = (w.tags && w.tags.name) || '';
+        const F = FACILITIES.find(f => f.re.test(nm));
+        if(!F || !w.geometry || (w.tags.bridge !== 'yes' && w.tags.tunnel !== 'yes')) return;
+        (g[F.id] = g[F.id] || []).push(...w.geometry.map(p => [+p.lon.toFixed(5), +p.lat.toFixed(5)]));
+      });
+      if(Object.keys(g).length > 3){ facGeom = g; store.set('facGeom', g); }
+      return facGeom;
+    }).catch(() => facGeom).finally(() => { facLoading = null; });
+  return facLoading;
+}
+function matchFacility(R, F){
+  const pts = facGeom && facGeom[F.id];
+  if(pts && pts.length){
+    let lo = Infinity, hi = -Infinity, hits = 0;
+    const step = Math.max(1, Math.floor(pts.length / 80));
+    for(let k = 0; k < pts.length; k += step){
+      const pr = projectOnRoute(R, {lon:pts[k][0], lat:pts[k][1]}, 0);
+      if(pr.off < 30){ hits++; lo = Math.min(lo, pr.along); hi = Math.max(hi, pr.along); }
+    }
+    return hits >= 2 && hi - lo > 250 ? {from:lo, to:hi} : null;
+  }
+  // no geometry yet: approximate centre point, only on a toll stretch
+  const pr = projectOnRoute(R, {lon:F.approx[0], lat:F.approx[1]}, 0);
+  if(pr.off > 500) return null;
+  if(!R.tollSegs.some(s => pr.along >= s.from - 300 && pr.along <= s.to + 300)) return null;
+  return {from:Math.max(0, pr.along - 400), to:Math.min(R.total, pr.along + 400)};
+}
+function estimateTolls(R){
+  const items = [], spans = [];
+  FACILITIES.forEach(F => {
+    const m = matchFacility(R, F); if(!m) return;
+    spans.push(m);
+    let fee = F.fee, note = '';
+    if(F.eastOnly && pointAt(R, m.from).lon > pointAt(R, m.to).lon){ fee = 0; note = 'Asya → Avrupa yönü ücretsiz'; }
+    if(F.night){
+      const t = new Date(Date.now() + R.time * (m.from / Math.max(1, R.total)) * 1000);
+      if(t.getHours() < 5){ fee = F.night; note = 'Gece tarifesi (00:00–04:59)'; }
+    }
+    items.push({kind:'fac', name:F.name, fee, note, from:m.from, to:m.to});
+  });
+  // motorway kilometres per network, excluding bridge/tunnel stretches
+  const nets = {};
+  R.tollSegs.forEach(sg => {
+    let len = sg.to - sg.from;
+    spans.forEach(sp => { len -= Math.max(0, Math.min(sg.to, sp.to) - Math.max(sg.from, sp.from)); });
+    if(len <= 0) return;
+    const key = classifyNet(sg.refs, pointAt(R, (sg.from + sg.to)/2));
+    nets[key] = (nets[key] || 0) + len;
+  });
+  Object.entries(nets).forEach(([key, m]) => {
+    const N = NETWORKS[key], km = m/1000;
+    if(!N.rate || km < 0.5) return;
+    let fee = Math.max(N.min || 0, km * N.rate);
+    if(N.max) fee = Math.min(fee, N.max);
+    items.push({kind:'road', name:N.name, km, fee:Math.max(5, Math.round(fee/5)*5), estimate:true});
+  });
+  const tollKm = R.tollSegs.reduce((a, s) => a + (s.to - s.from), 0) / 1000;
+  return {items, total:items.reduce((a, i) => a + i.fee, 0), tollKm, spans, estimate:items.some(i => i.estimate)};
+}
+const fmtTL = v => (Math.round(v*100)/100).toLocaleString('tr-TR', {maximumFractionDigits:2}) + ' ₺';
+function sliceCoords(R, from, to){
+  const out = [pointAt(R, from)].map(p => [p.lon, p.lat]);
+  for(let i = 0; i < R.coords.length; i++) if(R.cum[i] > from && R.cum[i] < to) out.push(R.coords[i]);
+  const e = pointAt(R, to); out.push([e.lon, e.lat]);
+  return out;
+}
+function tollFeatures(R){
+  if(!R || !R.tolls) return [];
+  const parts = [...R.tollSegs.map(s => [s.from, s.to]), ...R.tolls.spans.map(s => [s.from, s.to])];
+  return parts.filter(([a, b]) => b - a > 20).map(([a, b]) => ({type:'Feature', properties:{}, geometry:{type:'LineString', coordinates:sliceCoords(R, a, b)}}));
+}
+function renderTollRow(){
+  const el = $('#p-toll');
+  if(!route || !route.tolls){ el.hidden = true; return; }
+  const T = route.tolls; el.hidden = false; el.innerHTML = '';
+  const sw = mk('i', 'toll-sw');
+  if(!T.items.length && T.tollKm < 0.5){ el.classList.add('free'); el.append(sw, mk('span', null, 'Ücretli yol yok')); el.onclick = null; return; }
+  el.classList.remove('free');
+  const t = mk('span', null, 'Ücretli yol' + (T.tollKm >= 0.5 ? ' · ' + fmtDist(T.tollKm*1000) : ''));
+  el.append(sw, t, mk('b', null, (T.estimate ? '≈ ' : '') + fmtTL(T.total)), mk('em', null, 'Ayrıntı ›'));
+  el.onclick = () => showTollSheet(route);
+}
+function showTollSheet(R){
+  const T = R.tolls; if(!T) return;
+  openSheet('Motosiklet · 6. sınıf', 'Geçiş ücretleri');
+  const b = $('#s-body');
+  T.items.forEach(it => {
+    const row = mk('div', 'row'), m = mk('div', 'r-main');
+    m.append(mk('div', 'r-t', it.name), mk('div', 'r-s', it.kind === 'road' ? fmtDist(it.km*1000) + ' · km başına tahmini' : (it.note || 'Sabit ücret')));
+    row.append(m, mk('b', 'fee', (it.estimate ? '≈ ' : '') + fmtTL(it.fee))); b.append(row);
+  });
+  if(!T.items.length) b.append(mk('p', 's-msg', 'Bu rotada ücretli kesim var ama motosiklet ücreti hesaplanamadı.'));
+  const tot = mk('div', 'row total'); tot.append(mk('div', 'r-main r-t', 'Toplam'), mk('b', 'fee', (T.estimate ? '≈ ' : '') + fmtTL(T.total)));
+  b.append(tot);
+  b.append(mk('p', 's-msg', `${TOLL_TARIFF} tarifesi (KGM). Köprü ve tünel ücretleri kesindir. Otoyollarda ücret giriş ve çıkış gişesine göre değiştiği için kilometre üzerinden tahmin edilir. Geçişler HGS ile yapılır. 15 Temmuz ve FSM köprüleri yalnızca Avrupa → Asya yönünde ücretlidir; Avrasya Tüneli gece 00:00–04:59 arası yarı fiyattır.`));
+}
+
 /* ================= preview ================= */
 function setUI(s){ document.body.dataset.ui = s; updateCenterBtn(); }
 const mk = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; };
@@ -753,7 +923,7 @@ async function chooseDestination(d){
   if(!from){ setSum('Konumun bulunamadı. Konum iznini kontrol et ve tekrar dene.', true); return; }
   computePreview();
 }
-function setSum(text, msg){ const s = $('#p-sum'); s.classList.toggle('msg', !!msg); s.textContent = text; }
+function setSum(text, msg){ const s = $('#p-sum'); s.classList.toggle('msg', !!msg); s.textContent = text; if(msg) $('#p-toll').hidden = true; }
 async function computePreview(){
   const d = dest, seq = ++routeReq;
   setSum('Rota hesaplanıyor…', true);
@@ -762,9 +932,16 @@ async function computePreview(){
   try{
     const rs = await fetchRoutes(pos, [...stops, d], stops.length ? 0 : 2);
     if(seq !== routeReq || dest !== d) return;
+    rs.forEach(r => r.tolls = estimateTolls(r));
     routes = rs; selectRoute(0);
     $('#p-go').disabled = $('#p-demo').disabled = false;
     fitRoute();
+    if(rs.some(r => r.tollSegs.length) && !(facGeom && facGeom.t)){
+      loadFacilities().then(g => {
+        if(!g || routes !== rs || navigating) return;
+        rs.forEach(r => r.tolls = estimateTolls(r)); selectRoute(selRoute);
+      });
+    }
   }catch(e){
     if(seq === routeReq) setSum('Rota bulunamadı. İnternet bağlantını kontrol edip tekrar dene.', true);
   }
@@ -779,12 +956,14 @@ function selectRoute(i){
   if(routes.length > 1){
     routes.forEach((r, k) => {
       const b = mk('button', 'alt'); b.setAttribute('aria-pressed', k === selRoute);
-      b.append(mk('b', null, fmtTime(r.time)), mk('span', null, fmtDist(r.total) + (k === 0 ? ' · önerilen' : '')));
+      const fee = r.tolls ? (r.tolls.total > 0 ? ' · ≈ ' + fmtTL(r.tolls.total) : ' · ücretsiz') : '';
+      b.append(mk('b', null, fmtTime(r.time)), mk('span', null, fmtDist(r.total) + fee));
       b.onclick = () => selectRoute(k);
       box.append(b);
     });
   }
   box.hidden = routes.length < 2;
+  renderTollRow();
 }
 function fitRoute(){
   if(!route) return;
@@ -822,7 +1001,7 @@ $('#t-hw').onclick = () => { settings.avoidHighways = !settings.avoidHighways; s
 $('#t-toll').onclick = () => { settings.avoidTolls = !settings.avoidTolls; saveSettings(); syncToggles(); if(dest && pos) computePreview(); };
 $('#p-close').onclick = clearTrip;
 function clearTrip(){
-  routeReq++; dest = null; route = null; routes = []; stops = []; renderStops(); drawRoute();
+  routeReq++; dest = null; route = null; routes = []; stops = []; renderStops(); drawRoute(); $('#p-toll').hidden = true;
   if(destMarker){ destMarker.remove(); destMarker = null; }
   setUI('idle');
   if(pos) map.easeTo({center:[pos.lon, pos.lat], zoom:15, bearing:0, pitch:0, padding:{top:0,bottom:0,left:0,right:0}, duration:600});
@@ -1075,6 +1254,7 @@ async function reroute(f, msg){
   speak(msg || 'Rota yeniden hesaplanıyor');
   try{
     const r = (await fetchRoutes(f, [...stops, dest], 0))[0];
+    r.tolls = estimateTolls(r);
     if(!navigating) return;
     route = r; drawRoute(); navState = newNavState(); navState.lastReroute = Date.now();
   }catch(e){ toast('Yeni rota alınamadı, tekrar denenecek.'); }
@@ -1130,7 +1310,7 @@ if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.tes
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Yeni: Hızlı / Kısa / Virajlı rota tipi, alternatif rotalar, benzinlik bulup durak ekleme, sürüş kaydı ve GPX.';
+const WHATS_NEW = 'Yeni: Ücretli yollar haritada mor renkte; rotanın motosiklet geçiş ücreti toplamı ve dökümü önizlemede.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
