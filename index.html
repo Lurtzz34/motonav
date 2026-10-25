@@ -171,6 +171,44 @@ body[data-ui="nav"] #update{bottom:calc(var(--sb) + 100px)}
 .maplibregl-ctrl-bottom-right,.maplibregl-ctrl-bottom-left{transition:bottom .2s}
 body[data-ui="nav"] .maplibregl-ctrl-bottom-right{bottom:calc(var(--sb) + 86px)}
 body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
+/* ---------- v1.6: menu, fuel, maintenance, stops */
+body[data-ui="nav"] .not-nav{display:none!important}
+input{-webkit-user-select:text;user-select:text}
+.add-stop{height:44px;border-radius:12px;border:2px dashed var(--line);color:var(--muted);font-weight:700;font-size:15px}
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.menu-tile{display:flex;flex-direction:column;gap:4px;align-items:flex-start;text-align:left;padding:14px;border-radius:16px;background:var(--panel-2);min-height:86px}
+.menu-tile b{font:700 18px var(--f-ui)}
+.menu-tile span{font-size:13px;color:var(--muted);font-weight:600;line-height:1.3}
+.field{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+.f-label{font-size:13px;color:var(--muted);font-weight:600}
+.f-box{display:flex;align-items:center;gap:6px;background:var(--panel);border:2px solid var(--line);border-radius:12px;padding:0 10px;height:48px}
+.f-box:focus-within{border-color:var(--route)}
+.f-box input{flex:1;min-width:0;border:0;background:transparent;color:var(--ink);font:700 20px var(--f-num);outline:none}
+.f-unit{color:var(--muted);font-weight:600;font-size:14px}
+.field-row{display:flex;gap:8px}
+.gauge{height:12px;border-radius:6px;background:var(--panel-2);overflow:hidden}
+.gauge i{display:block;height:100%;background:var(--ok);border-radius:6px}
+.gauge.low i{background:var(--danger)}
+.row.maint{border-left:6px solid var(--line)}
+.row.maint.ok{border-left-color:var(--ok)}
+.row.maint.soon{border-left-color:var(--amber)}
+.row.maint.late{border-left-color:var(--danger)}
+.row.maint .act{padding:0 14px}
+.sheet-search{box-shadow:none;background:var(--panel-2);height:54px;padding-left:14px}
+.sheet-search input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--ink);font:600 18px var(--f-ui);outline:none}
+.stop-results{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px}
+.stop-results li button{width:100%;text-align:left;padding:10px 12px;border-radius:12px;background:var(--panel-2);display:flex;flex-direction:column;gap:2px;min-height:54px}
+.stop-results .r-name{font-weight:700;font-size:16px}
+.stop-results .r-sub{font-size:13px;color:var(--muted)}
+.stop-results .r-kind{font-style:normal;font:700 11px var(--f-ui);text-transform:uppercase;color:var(--muted);margin-left:8px}
+.stop-results .r-hint,.stop-results .r-empty{padding:10px 12px;font-size:14px;color:var(--muted)}
+.chips-inline{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.chips-inline .chip{box-shadow:none;background:var(--panel-2)}
+.chips-inline .chip.fav{background:var(--amber)}
+.fuel-head{background:color-mix(in srgb,var(--ok) 14%,var(--panel))}
+#fuel-badge{position:fixed;left:calc(var(--gl) + 80px);bottom:calc(var(--sb) + 112px);z-index:5;background:var(--card);color:#fff;font:700 15px var(--f-ui);padding:8px 12px;border-radius:12px;box-shadow:var(--shadow)}
+#fuel-badge.low{background:var(--danger)}
+
 /* ---------- v1.1: route style, alternatives, stops, list sheet */
 .seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;background:var(--panel-2);padding:4px;border-radius:14px}
 .seg button{height:44px;border-radius:10px;font-weight:700;font-size:15px;color:var(--muted)}
@@ -234,11 +272,11 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 </section>
 
 <div id="fabs">
-  <button id="btn-mode" class="fab" aria-label="Gece / gündüz haritası"></button>
+  <button id="btn-mode" class="fab not-nav" aria-label="Gece / gündüz haritası"></button>
   <button id="btn-fuel" class="fab" aria-label="Yakındaki benzinlikler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6.5 8h5"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg></button>
-  <button id="btn-settings" class="fab only-idle" aria-label="Ayarlar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></button>
   <button id="btn-park" class="fab only-idle" aria-label="Park yerini kaydet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M9.5 17V7h3.5a3 3 0 0 1 0 6H9.5"/></svg></button>
-  <button id="btn-trips" class="fab only-idle" aria-label="Sürüşlerim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg></button>
+  <button id="btn-menu" class="fab only-idle" aria-label="Menü"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <button id="btn-addstop" class="fab only-nav" aria-label="Ara durak ekle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-6-6.2-6-11a6 6 0 0 1 12 0c0 1-.3 2.1-.8 3.2"/><circle cx="12" cy="10" r="2.2"/><path d="M18 15v6M15 18h6"/></svg></button>
   <button id="btn-view" class="fab only-nav" aria-label="Görünüm"></button>
   <button id="btn-center" class="fab" aria-label="Konumuma ortala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
 </div>
@@ -256,6 +294,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
     <button data-style="fast">Hızlı</button><button data-style="short">Kısa</button><button data-style="curvy">Virajlı</button>
   </div>
   <div id="p-stops" hidden></div>
+  <button id="p-addstop" class="add-stop">+ Ara durak ekle</button>
   <div class="toggles">
     <button id="t-hw" class="toggle" aria-pressed="false">Otoyoldan kaçın</button>
     <button id="t-toll" class="toggle" aria-pressed="false">Paralı yoldan kaçın</button>
@@ -278,6 +317,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 </section>
 
 <div id="demo-tag" class="only-nav" hidden>DEMO SÜRÜŞ</div>
+<div id="fuel-badge" class="only-nav" hidden></div>
 <div id="limit" class="only-nav" hidden aria-label="Hız sınırı"><span id="limit-v"></span><small id="limit-src"></small></div>
 
 <section id="nav-bottom" class="only-nav">
@@ -301,7 +341,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 
 <script>
 'use strict';
-const VERSION = '1.5.2';
+const VERSION = '1.6.0';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -407,6 +447,8 @@ let map, userMarker = null, destMarker = null;
 let pos = null, headingAnchor = null, lastFix = null;
 let follow = true, centeredOnce = false;
 let route = null, dest = null, stops = [], routes = [], selRoute = 0, stopMarkers = [], rec = null;
+let via = [], gpxShown = null; // GPX: points the route must pass through (no stop announcements)
+const routePoints = d => [...stops, ...via.map(v => ({lat:v.lat, lon:v.lon, through:true})), d];
 let navigating = false, navState = null, demoTimer = null, watchId = null;
 let wakeLock = null, routeReq = 0;
 const posWaiters = [];
@@ -437,6 +479,10 @@ map.on('style.load', () => {
     map.addLayer({id:'track-line', type:'line', source:'track',
       layout:{'line-join':'round','line-cap':'round'},
       paint:{'line-color':'#ffb000','line-width':['interpolate',['linear'],['zoom'],8,3,14,6,18,12]}});
+    map.addSource('gpx', {type:'geojson', data:empty});
+    map.addLayer({id:'gpx-line', type:'line', source:'gpx',
+      layout:{'line-join':'round','line-cap':'round'},
+      paint:{'line-color':'#ffb000','line-width':['interpolate',['linear'],['zoom'],8,3,14,6,18,10],'line-dasharray':[1.5,1.5],'line-opacity':.9}});
     map.addSource('route-alt', {type:'geojson', data:empty});
     map.addLayer({id:'route-alt-line', type:'line', source:'route-alt',
       layout:{'line-join':'round','line-cap':'round'},
@@ -466,6 +512,7 @@ function drawRoute(){
   map.getSource('route-alt').setData({type:'FeatureCollection', features:alts});
   map.getSource('route-toll').setData({type:'FeatureCollection', features:tollFeatures(route, from)});
   if(trackPts) map.getSource('track').setData({type:'Feature', geometry:{type:'LineString', coordinates:trackPts}});
+  map.getSource('gpx').setData(gpxShown && gpxShown.length > 1 ? {type:'Feature', geometry:{type:'LineString', coordinates:gpxShown}} : {type:'FeatureCollection', features:[]});
 }
 let trackPts = null;
 function showTrack(pts){
@@ -761,22 +808,17 @@ function parseMapLink(text){
   if(!name || pair(name)) name = (P.get('address') || '').split(',')[0] || 'Paylaşılan konum';
   return {name, sub:P.get('address') || 'Harita linkinden', lat:c.lat, lon:c.lon, kind:'Link'};
 }
-async function runSearch(){
-  const q = qEl.value.trim();
-  const seq = ++searchSeq;
-  if(q.length < 3){ $('#results').hidden = true; return; }
+async function geocode(q){
   const m = q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
-  if(m){ renderResults([{name:'Koordinat', sub:q, lat:+m[1], lon:+m[2]}]); return; }
+  if(m) return {list:[{name:'Koordinat', sub:q, lat:+m[1], lon:+m[2]}]};
   const link = parseMapLink(q);
   if(link){
-    if(link.short) renderResults([], 'Kısa Google linkleri açılamıyor. Apple Haritalar\'da yeri bulup Paylaş › Kopyala ile linki yapıştır ya da Google Haritalar\'da yere basılı tutup koordinatı kopyala.');
-    else if(link.bad) renderResults([], 'Bu linkte konum bilgisi bulunamadı.');
-    else renderResults([link]);
-    return;
+    if(link.short) return {list:[], hint:'Kısa Google linkleri açılamıyor. Apple Haritalar\'da yeri bulup Paylaş › Kopyala ile linki yapıştır ya da Google Haritalar\'da yere basılı tutup koordinatı kopyala.'};
+    if(link.bad) return {list:[], hint:'Bu linkte konum bilgisi bulunamadı.'};
+    return {list:[link]};
   }
   const [a, b] = await Promise.allSettled([searchPhoton(q), searchNominatim(q)]);
-  if(seq !== searchSeq) return;
-  if(a.status === 'rejected' && b.status === 'rejected'){ renderResults(null); return; }
+  if(a.status === 'rejected' && b.status === 'rejected') return {list:null};
   const all = [...(a.value || []), ...(b.value || [])];
   all.forEach(h => h.score = scoreHit(h, q));
   all.sort((x, y) => y.score - x.score);
@@ -788,10 +830,18 @@ async function runSearch(){
   });
   const toks = fold(q).split(' ').filter(Boolean);
   const exact = out.some(h => toks.every(t => fold(h.name).includes(t)) || toks.filter(t => fold(h.name).includes(t)).length >= Math.max(1, toks.length - 1) && h.poi);
-  renderResults(out.slice(0, 8), exact ? null : 'Aradığın yer bu haritada kayıtlı olmayabilir. Apple Haritalar\'da bulup Paylaş › Kopyala ile linki buraya yapıştırabilirsin. Haritada noktaya dokunarak da hedef seçebilirsin.');
+  return {list:out.slice(0, 8), hint:exact ? null : 'Aradığın yer bu haritada kayıtlı olmayabilir. Apple Haritalar\'da bulup Paylaş › Kopyala ile linki buraya yapıştırabilirsin. Haritada noktaya dokunarak da hedef seçebilirsin.'};
 }
-function renderResults(list, hint){
-  const ul = $('#results'); ul.innerHTML = '';
+async function runSearch(){
+  const q = qEl.value.trim();
+  const seq = ++searchSeq;
+  if(q.length < 3){ $('#results').hidden = true; return; }
+  const r = await geocode(q);
+  if(seq !== searchSeq) return;
+  renderResults(r.list, r.hint);
+}
+function renderResults(list, hint, ul = $('#results'), pick){
+  ul.innerHTML = '';
   if(hint){ const li = document.createElement('li'); li.className = 'r-hint'; li.textContent = hint; ul.append(li); }
   if(!list || (!list.length && !hint)){
     const li = document.createElement('li'); li.className = 'r-empty';
@@ -804,7 +854,7 @@ function renderResults(list, hint){
     if(it.kind) top.append(mk('em', 'r-kind', it.kind));
     const meta = [pos ? fmtDist(hav(pos, it)) : '', it.sub].filter(Boolean).join(' · ');
     b.append(top, mk('span', 'r-sub', meta));
-    b.onclick = () => { ul.hidden = true; qEl.blur(); chooseDestination({name:it.name, lat:it.lat, lon:it.lon}); };
+    b.onclick = pick ? () => pick({name:it.name, lat:it.lat, lon:it.lon}) : () => { ul.hidden = true; qEl.blur(); chooseDestination({name:it.name, lat:it.lat, lon:it.lon}); };
     li.append(b); ul.append(li);
   });
   ul.hidden = false;
@@ -872,13 +922,13 @@ async function fetchRoutes(from, pts, alternates = 0){
 async function valhallaRoutes(from, pts, costing, alternates){
   const loc0 = {lat:from.lat, lon:from.lon};
   if(from.heading != null && from.speed > 2){ loc0.heading = Math.round(from.heading); loc0.heading_tolerance = 50; }
-  const body = {locations:[loc0, ...pts.map(p => ({lat:p.lat, lon:p.lon}))], costing,
+  const body = {locations:[loc0, ...pts.map((p, k) => p.through && k < pts.length - 1 ? {lat:p.lat, lon:p.lon, type:'through'} : {lat:p.lat, lon:p.lon})], costing,
     costing_options:{[costing]:costingOptions(costing)}, directions_options:{language:'tr-TR', units:'kilometers'}, units:'kilometers'};
   if(alternates && pts.length === 1) body.alternates = alternates;
   const r = await fetchT('https://valhalla1.openstreetmap.de/route?json=' + encodeURIComponent(JSON.stringify(body)), 15000);
   if(!r.ok) throw new Error('HTTP ' + r.status);
   const j = await r.json();
-  const names = pts.map(p => p.name);
+  const names = pts.filter((p, k) => !p.through || k === pts.length - 1).map(p => p.name);
   return [j.trip, ...(j.alternates || []).map(a => a.trip)].filter(Boolean).map(t => parseValhallaTrip(t, names));
 }
 function stopMan(name, idx){
@@ -917,9 +967,9 @@ async function osrmRoutes(from, pts, alternates){
   if(settings.avoidHighways || settings.avoidTolls || settings.routeStyle !== 'fast')
     toast('Yedek rota servisi kullanıldı; rota tipi ve kaçınma seçenekleri uygulanamadı.', 5000);
   const names = pts.map(p => p.name);
-  return j.routes.map(rt => parseOsrm(rt, names));
+  return j.routes.map(rt => parseOsrm(rt, names, pts));
 }
-function parseOsrm(rt, names){
+function parseOsrm(rt, names, pts = []){
   const coords = rt.geometry.coordinates, nLeg = rt.legs.length;
   let ci = 0; const mans = [];
   rt.legs.forEach((leg, li) => leg.steps.forEach(st => {
@@ -931,7 +981,7 @@ function parseOsrm(rt, names){
     }
     ci = best;
     if(m.type === 'depart' && li > 0) return;
-    if(m.type === 'arrive' && li < nLeg - 1){ mans.push(stopMan(names[li], ci)); return; }
+    if(m.type === 'arrive' && li < nLeg - 1){ if(!(pts[li] && pts[li].through)) mans.push(stopMan(names[li], ci)); return; }
     const on = st.name ? ', ' + st.name : '';
     let type, text;
     if(m.type === 'depart'){ type = 1; text = 'Yola çıkın' + on; }
@@ -1175,15 +1225,16 @@ function setUI(s){
   if(prev !== s){ refreshCamMarkers(); renderCamInfo(); if(s === 'idle' && pos) loadNearCams(pos); }
 }
 const mk = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; };
-async function chooseDestination(d){
+async function chooseDestination(d, opts = {}){
   dest = d; stops = []; routes = []; selRoute = 0; route = null;
+  via = opts.via || []; gpxShown = opts.gpx || null;
   closeSheet(); renderStops(); drawRoute();
   setUI('preview');
   $('#p-name').textContent = d.name;
   $('#p-go').disabled = $('#p-demo').disabled = true;
   if(destMarker) destMarker.remove();
   destMarker = new maplibregl.Marker({color:'#e5484d'}).setLngLat([d.lon, d.lat]).addTo(map);
-  pushRecent(d);
+  if(!via.length) pushRecent(d);
   setSum('Konum bekleniyor…', true);
   const from = await waitPos();
   if(dest !== d) return;
@@ -1197,7 +1248,7 @@ async function computePreview(){
   $('#p-alts').hidden = true;
   $('#p-go').disabled = $('#p-demo').disabled = true;
   try{
-    const rs = await fetchRoutes(pos, [...stops, d], stops.length ? 0 : 2);
+    const rs = await fetchRoutes(pos, routePoints(d), stops.length || via.length ? 0 : 2);
     if(seq !== routeReq || dest !== d) return;
     rs.forEach(r => r.tolls = d.walk ? null : estimateTolls(r));
     routes = rs; selectRoute(0);
@@ -1270,7 +1321,7 @@ $('#t-hw').onclick = () => { settings.avoidHighways = !settings.avoidHighways; s
 $('#t-toll').onclick = () => { settings.avoidTolls = !settings.avoidTolls; saveSettings(); syncToggles(); if(dest && pos) computePreview(); };
 $('#p-close').onclick = clearTrip;
 function clearTrip(){
-  routeReq++; dest = null; route = null; routes = []; stops = []; renderStops(); drawRoute(); $('#p-toll').hidden = true;
+  routeReq++; dest = null; route = null; routes = []; stops = []; via = []; gpxShown = null; renderStops(); drawRoute(); $('#p-toll').hidden = true;
   if(destMarker){ destMarker.remove(); destMarker = null; }
   setUI('idle');
   if(pos) map.easeTo({center:[pos.lon, pos.lat], zoom:15, bearing:0, pitch:0, padding:{top:0,bottom:0,left:0,right:0}, duration:600});
@@ -1316,6 +1367,10 @@ async function openFuel(){
 }
 function renderFuel(list){
   const b = $('#s-body'); b.innerHTML = '';
+  const fi = fuelInfo();
+  const head = mk('button', 'row fuel-head'), hm = mk('div', 'r-main');
+  hm.append(mk('div', 'r-t', fi ? `Menzil ${Math.round(fi.range)} km · depo %${Math.round(fi.pct*100)}` : 'Depo bilgisi yok'), mk('div', 'r-s', 'Yakıt aldım / depo ayarları ›'));
+  head.append(hm); head.onclick = openFuelStatus; b.append(head);
   if(!list.length){ sMsg('Yakında benzinlik bulunamadı.'); return; }
   const ui = document.body.dataset.ui;
   list.forEach(s => {
@@ -1353,16 +1408,28 @@ function recPoint(f){
   const d = hav({lat:last[1], lon:last[0]}, f);
   if(d >= 20){ rec.dist += d; rec.pts.push(pt); }
 }
-function recSave(){
-  const r = rec; rec = null;
-  if(!r || r.dist < 300) return;
-  const t = {id:r.start, start:r.start, end:Date.now(), dest:r.dest, dist:Math.round(r.dist), max:Math.round(r.max), moving:Math.round(r.moving), pts:r.pts};
+function recSave(recovered){
+  const r = rec;
+  if(!r){ store.set('recLive', null); return; }
+  const dist = r.dist;
+  rec = null; store.set('recLive', null);
+  if(dist < 300) return;
+  const F = fuelCfg(), cons = realConsumption(F) || F.cons;
+  const end = recovered && r.pts.length ? r.pts[r.pts.length - 1][2]*1000 : Date.now();
+  const fuelL = Math.round(dist/1000*cons/100*100)/100;
+  const t = {id:r.start, start:r.start, end, dest:r.dest, dist:Math.round(dist), max:Math.round(r.max), moving:Math.round(r.moving), pts:r.pts,
+    fuelL, cost:F.price ? Math.round(fuelL*F.price*100)/100 : null};
   const trips = [t, ...store.get('trips', [])].slice(0, 25);
   while(trips.length && !store.set('trips', trips)) trips.pop();
-  setTimeout(() => toast(`Sürüş kaydedildi: ${fmtDist(t.dist)}, en yüksek ${t.max} km/sa`, 5000), 1600);
+  const stats = tripStats().filter(x => x.id !== t.id);
+  stats.unshift({id:t.id, start:t.start, end:t.end, dist:t.dist, max:t.max, moving:t.moving, fuelL, cost:t.cost});
+  store.set('tripStats', stats.slice(0, 3000));
+  addOdo(dist/1000);
+  setTimeout(() => toast(recovered ? `Yarım kalan sürüş kurtarıldı: ${fmtDist(t.dist)}` : `Sürüş kaydedildi: ${fmtDist(t.dist)}, en yüksek ${t.max} km/sa`, 5000), 1600);
+  setTimeout(maintReminder, 7000);
 }
 const fmtDate = ms => new Date(ms).toLocaleString('tr-TR', {day:'numeric', month:'short', hour:'2-digit', minute:'2-digit'});
-$('#btn-trips').onclick = openTrips;
+
 function openTrips(){
   clearTrack();
   openSheet('Kayıt', 'Sürüşlerim');
@@ -1379,8 +1446,13 @@ function showTrip(t){
   openSheet(fmtDate(t.start), t.dest || 'Sürüş');
   const b = $('#s-body'), st = mk('div', 'stats');
   const avg = t.moving > 0 ? t.dist / t.moving * 3.6 : 0;
+  const F = fuelCfg(), fuelL = t.fuelL ?? t.dist/1000*(realConsumption(F) || F.cons)/100;
+  const cost = t.cost ?? (F.price ? fuelL*F.price : null);
+  const overall = (t.end - t.start) > 0 ? t.dist/((t.end - t.start)/1000)*3.6 : 0;
   [[fmtDist(t.dist), '', 'Mesafe'], [fmtTime((t.end - t.start)/1000), '', 'Toplam süre'],
-   [Math.round(avg), 'km/sa', 'Ortalama hız'], [t.max, 'km/sa', 'En yüksek hız']]
+   [Math.round(avg), 'km/sa', 'Ortalama hız (hareket)'], [t.max, 'km/sa', 'En yüksek hız'],
+   [fmtTime(t.moving || 0), '', 'Hareket süresi'], [Math.round(overall), 'km/sa', 'Ortalama hız (genel)'],
+   [fmtNum(fuelL), 'L', 'Tahmini yakıt'], [cost ? fmtTL(cost) : '—', '', 'Tahmini yakıt gideri']]
     .forEach(([v, u, l]) => { const s = mk('div', 'stat'), n = mk('b', null, v); if(u) n.append(mk('small', null, ' ' + u)); s.append(n, mk('span', null, l)); st.append(s); });
   const acts = mk('div', 's-actions');
   const g = mk('button', 'secondary', 'GPX kaydet'); g.onclick = () => exportGpx(t);
@@ -1700,7 +1772,450 @@ function openSettings(){
   b.append(acts);
   b.append(mk('p', 's-msg', 'Hız sınırları Karayolları Trafik Yönetmeliği Md. 100\'e göre: motosiklet şehir içi 50, çift yönlü yol 80, bölünmüş yol 90, otoyol 100 km/sa; motorlu bisiklet 30 / 45 / 45, otoyola giremez. Yol tipi ve levhalar OpenStreetMap verisinden gelir; her yerde bulunmayabilir. Levha varsa ve motosiklet sınırından düşükse levha esas alınır.'));
 }
-$('#btn-settings').onclick = openSettings;
+$('#btn-menu').onclick = openMenu;
+$('#btn-addstop').onclick = openStopSearch;
+$('#p-addstop').onclick = openStopSearch;
+
+/* ================= odometer ================= */
+// km ridden with MotoNav (from recorded rides) + offset so it matches the bike's own odometer
+function odoCfg(){ return Object.assign({km:0, offset:null}, store.get('odo', {})); }
+function rideKm(){ return odoCfg().km + (rec ? rec.dist/1000 : 0); }           // km recorded by the app
+function bikeKm(){ const o = odoCfg(); return o.offset == null ? null : rideKm() + o.offset; } // bike's odometer, if set
+function addOdo(km){ const o = odoCfg(); o.km = Math.round((o.km + km)*100)/100; store.set('odo', o); }
+const fmtKm = v => Math.round(v).toLocaleString('tr-TR') + ' km';
+const fmtNum = (v, d = 1) => (Math.round(v*Math.pow(10, d))/Math.pow(10, d)).toLocaleString('tr-TR', {maximumFractionDigits:d});
+
+/* ================= fuel ================= */
+// Defaults are rough values for a 150 cc scooter; the rider edits them in Yakıt.
+function fuelCfg(){ return Object.assign({tank:7, cons:3.0, reserveKm:30, level:null, lastAt:0, price:null, log:[]}, store.get('fuel', {})); }
+function saveFuel(F){ store.set('fuel', F); }
+function fuelInfo(){
+  const F = fuelCfg(); if(F.level == null) return null;
+  const left = Math.max(0, F.level - (rideKm() - F.lastAt) * F.cons/100);
+  return {left, pct:Math.min(1, left/F.tank), range:F.cons > 0 ? left/F.cons*100 : 0, F};
+}
+function realConsumption(F){
+  // full-to-full: litres put in after the first full fill / km between full fills
+  const log = (F.log || []).slice().sort((a, b) => a.t - b.t);
+  const fulls = log.map((e, i) => e.full ? i : -1).filter(i => i >= 0);
+  if(fulls.length < 2) return null;
+  const a = fulls[0], b = fulls[fulls.length - 1];
+  const km = log[b].odo - log[a].odo; if(km < 50) return null;
+  const litres = log.slice(a + 1, b + 1).reduce((s, e) => s + (e.liters || 0), 0);
+  return litres > 0 ? litres/km*100 : null;
+}
+function addFuelEntry(liters, cost, full){
+  const F = fuelCfg(), info = fuelInfo(), now = rideKm();
+  const before = info ? info.left : 0;
+  F.level = full ? F.tank : Math.min(F.tank, before + (liters || 0));
+  F.lastAt = now;
+  if(liters > 0 && cost > 0) F.price = cost/liters;
+  F.log = [{t:Date.now(), liters:liters || null, cost:cost || null, full:!!full, odo:now}, ...(F.log || [])].slice(0, 200);
+  saveFuel(F); renderFuelBadge();
+}
+function renderFuelBadge(){
+  const el = $('#fuel-badge'); if(!el) return;
+  const i = fuelInfo();
+  if(!i || !navigating || (dest && dest.walk)){ el.hidden = true; return; }
+  el.hidden = false;
+  el.textContent = 'Menzil ' + Math.max(0, Math.round(i.range)) + ' km';
+  el.classList.toggle('low', i.range <= i.F.reserveKm);
+}
+let fuelWarned = {};
+function checkFuelOnStart(){
+  fuelWarned = {};
+  const i = fuelInfo(); if(!i || !route) return;
+  const need = route.total/1000;
+  if(i.range < need + i.F.reserveKm/2){
+    setTimeout(() => {
+      speak('Dikkat, yakıt bu rota için yetmeyebilir');
+      toast(`Menzil ${Math.round(i.range)} km, rota ${Math.round(need)} km. Pompa düğmesinden rota üzerindeki benzinliği durak ekleyebilirsin.`, 8000);
+    }, 2500);
+  }
+}
+function checkFuelDuring(){
+  const i = fuelInfo(); if(!i) return;
+  renderFuelBadge();
+  const r = i.range, res = i.F.reserveKm;
+  if(r <= res && !fuelWarned.res){ fuelWarned.res = true; speak('Yakıt azaldı, menzil ' + Math.max(0, Math.round(r)) + ' kilometre'); }
+  if(r <= 10 && !fuelWarned.crit){ fuelWarned.crit = true; speak('Yakıt kritik seviyede, en yakın benzinliğe gidin'); }
+}
+function numberField(label, value, step, unit, onChange){
+  const wrap = mk('label', 'field');
+  wrap.append(mk('span', 'f-label', label));
+  const box = mk('span', 'f-box');
+  const inp = document.createElement('input');
+  inp.type = 'number'; inp.inputMode = 'decimal'; inp.step = step; inp.min = '0';
+  if(value != null) inp.value = value;
+  inp.onchange = () => { const v = parseFloat(String(inp.value).replace(',', '.')); if(!isNaN(v) && v >= 0) onChange(v); };
+  box.append(inp); if(unit) box.append(mk('span', 'f-unit', unit));
+  wrap.append(box);
+  return {wrap, inp};
+}
+function openFuelStatus(){
+  openSheet('Yakıt', 'Depo ve menzil');
+  const b = $('#s-body'), F = fuelCfg(), i = fuelInfo(), real = realConsumption(F);
+  const st = mk('div', 'stats');
+  const tile = (v, u, l) => { const s = mk('div', 'stat'), n = mk('b', null, v); if(u) n.append(mk('small', null, ' ' + u)); s.append(n, mk('span', null, l)); st.append(s); };
+  if(i){
+    tile(Math.round(i.range), 'km', 'Tahmini menzil');
+    tile('%' + Math.round(i.pct*100), '', fmtNum(i.left) + ' L depoda');
+  } else {
+    tile('—', '', 'Menzil (depo bilgisi yok)'); tile('—', '', 'Depo');
+  }
+  tile(fmtNum(real || F.cons), 'L/100', real ? 'Gerçek tüketim' : 'Ayarlanan tüketim');
+  tile(F.price ? fmtNum(F.price, 2) : '—', F.price ? '₺/L' : '', 'Son litre fiyatı');
+  if(i){ const bar = mk('div', 'gauge'); const fill = mk('i'); fill.style.width = Math.round(i.pct*100) + '%'; if(i.range <= F.reserveKm) bar.classList.add('low'); bar.append(fill); b.append(bar); }
+  b.append(st);
+  const acts = mk('div', 's-actions');
+  const full = mk('button', 'primary wide', 'Depoyu doldurdum');
+  full.onclick = () => { addFuelEntry(null, null, true); toast('Depo dolu olarak kaydedildi', 2000); openFuelStatus(); };
+  acts.append(full); b.append(acts);
+  // add a fill-up
+  const form = mk('div', 'set-group'); form.append(mk('div', 'r-t', 'Yakıt aldım'));
+  let L = null, C = null, isFull = true;
+  const f1 = numberField('Litre', '', '0.1', 'L', v => L = v), f2 = numberField('Tutar', '', '1', '₺', v => C = v);
+  f1.inp.oninput = () => { L = parseFloat(f1.inp.value); }; f2.inp.oninput = () => { C = parseFloat(f2.inp.value); };
+  const row = mk('div', 'field-row'); row.append(f1.wrap, f2.wrap); form.append(row);
+  const chk = mk('button', 'row'); chk.setAttribute('role', 'switch'); chk.setAttribute('aria-checked', 'true');
+  chk.append(mk('div', 'r-main r-t', 'Depoyu fulledim'), mk('span', 'switch'));
+  chk.onclick = () => { isFull = chk.getAttribute('aria-checked') !== 'true'; chk.setAttribute('aria-checked', isFull); };
+  const save = mk('button', 'secondary', 'Kaydet');
+  save.onclick = () => {
+    if(!(L > 0) && !isFull){ toast('Litre gir ya da "Depoyu fulledim"i aç.'); return; }
+    addFuelEntry(L > 0 ? L : null, C > 0 ? C : null, isFull); toast('Yakıt kaydedildi', 2000); openFuelStatus();
+  };
+  form.append(chk, save); b.append(form);
+  // settings
+  const cfg = mk('div', 'set-group'); cfg.append(mk('div', 'r-t', 'Motor bilgileri'), mk('div', 'r-s', 'Kendi motoruna göre düzenle'));
+  const r2 = mk('div', 'field-row');
+  r2.append(numberField('Depo hacmi', F.tank, '0.1', 'L', v => { const G = fuelCfg(); G.tank = v; if(G.level != null) G.level = Math.min(G.level, v); saveFuel(G); }).wrap,
+            numberField('Tüketim', F.cons, '0.1', 'L/100', v => { const G = fuelCfg(); G.cons = v; saveFuel(G); }).wrap);
+  cfg.append(r2, numberField('Uyarı menzili', F.reserveKm, '1', 'km', v => { const G = fuelCfg(); G.reserveKm = v; saveFuel(G); }).wrap);
+  b.append(cfg);
+  if((F.log || []).length){
+    b.append(mk('div', 'eyebrow set-h', 'Son yakıt kayıtları'));
+    F.log.slice(0, 8).forEach(e => {
+      const r = mk('div', 'row'), m = mk('div', 'r-main');
+      m.append(mk('div', 'r-t', (e.liters ? fmtNum(e.liters) + ' L' : 'Depo dolduruldu') + (e.full && e.liters ? ' · full' : '')),
+               mk('div', 'r-s', fmtDate(e.t) + (e.cost ? ' · ' + fmtTL(e.cost) : '')));
+      r.append(m); b.append(r);
+    });
+  }
+  b.append(mk('p', 's-msg', 'Menzil, MotoNav ile kaydedilen sürüşlerin kilometresinden hesaplanır. Uygulama kapalıyken yaptığın sürüşleri hesaba katamaz; yakıt alınca kaydetmen menzili düzeltir.'));
+}
+
+/* ================= maintenance ================= */
+const MAINT_DEFAULTS = [
+  ['oil', 'Motor yağı', 3000], ['gear', 'Şanzıman / dişli yağı', 6000], ['air', 'Hava filtresi', 6000],
+  ['plug', 'Buji', 8000], ['belt', 'V-kayış', 15000], ['brake', 'Fren balataları kontrol', 5000], ['tire', 'Lastik kontrol', 3000]
+];
+function maintList(){
+  const saved = store.get('maint', null);
+  if(saved) return saved;
+  return MAINT_DEFAULTS.map(([id, name, every]) => ({id, name, every, lastKm:null, lastT:null}));
+}
+function maintStatus(m, km){
+  if(km == null || m.lastKm == null) return {cls:'unk', text:'Kayıt yok', left:null};
+  const left = m.lastKm + m.every - km;
+  if(left < 0) return {cls:'late', text:fmtKm(-left) + ' gecikti', left};
+  if(left <= 300) return {cls:'soon', text:fmtKm(left) + ' kaldı', left};
+  return {cls:'ok', text:fmtKm(left) + ' kaldı', left};
+}
+function openMaint(){
+  openSheet('Bakım', 'Bakım takibi');
+  const b = $('#s-body'), km = bikeKm(), list = maintList();
+  const head = mk('div', 'set-group');
+  head.append(mk('div', 'r-t', 'Motorun kilometresi'), mk('div', 'r-s', km == null ? 'Göstergedeki km\'yi gir; sonrası sürüşlerle otomatik artar.' : 'Sürüşlerle otomatik artıyor; farklıysa düzelt.'));
+  head.append(numberField('Gösterge', km == null ? '' : Math.round(km), '1', 'km', v => {
+    const o = odoCfg(); o.offset = v - rideKm(); store.set('odo', o); openMaint();
+  }).wrap);
+  b.append(head);
+  list.forEach((m, idx) => {
+    const S = maintStatus(m, km);
+    const row = mk('div', 'row maint ' + S.cls), main = mk('div', 'r-main');
+    main.append(mk('div', 'r-t', m.name), mk('div', 'r-s', `Her ${fmtKm(m.every)} · ${S.text}` + (m.lastT ? ' · son: ' + new Date(m.lastT).toLocaleDateString('tr-TR') : '')));
+    const done = mk('button', 'act', 'Yapıldı');
+    done.onclick = () => {
+      if(km == null){ toast('Önce motorun kilometresini gir.'); return; }
+      const L = maintList(); L[idx].lastKm = Math.round(km); L[idx].lastT = Date.now(); store.set('maint', L); openMaint();
+    };
+    const edit = mk('button', 'iconbtn'); edit.setAttribute('aria-label', 'Aralığı değiştir');
+    edit.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>';
+    edit.onclick = () => {
+      const v = parseInt(prompt(m.name + ' kaç km\'de bir?', m.every) || '', 10);
+      if(v > 0){ const L = maintList(); L[idx].every = v; store.set('maint', L); openMaint(); }
+    };
+    row.append(main, edit, done); b.append(row);
+  });
+  b.append(mk('p', 's-msg', 'Aralıklar 150 cc scooter için genel önerilerdir; motorunun servis kitapçığına göre düzenle. Bakım yaklaşınca uygulama açılışta ve sürüş bitince hatırlatır.'));
+}
+function maintReminder(){
+  const km = bikeKm(); if(km == null) return;
+  const due = maintList().map(m => ({m, S:maintStatus(m, km)})).filter(x => x.S.left != null && x.S.left <= 200).sort((a, b) => a.S.left - b.S.left);
+  if(!due.length) return;
+  const day = new Date().toDateString();
+  if(store.get('maintToast', '') === day) return;
+  store.set('maintToast', day);
+  const x = due[0];
+  setTimeout(() => toast('Bakım: ' + x.m.name + ' — ' + x.S.text + (due.length > 1 ? ` (+${due.length - 1} kalem)` : ''), 6000), 3000);
+}
+
+/* ================= ride statistics ================= */
+function tripStats(){
+  let s = store.get('tripStats', null);
+  if(!s){ s = store.get('trips', []).map(t => ({id:t.id, start:t.start, end:t.end, dist:t.dist, max:t.max, moving:t.moving})); store.set('tripStats', s); }
+  return s;
+}
+function openStats(period = 'month'){
+  openSheet('İstatistik', 'Sürüş istatistikleri');
+  const b = $('#s-body');
+  const seg = mk('div', 'seg');
+  [['month', 'Bu ay'], ['year', 'Bu yıl'], ['all', 'Tümü']].forEach(([k, l]) => {
+    const btn = mk('button', null, l); btn.setAttribute('aria-pressed', k === period); btn.onclick = () => openStats(k); seg.append(btn);
+  });
+  b.append(seg);
+  const now = new Date();
+  const from = period === 'month' ? new Date(now.getFullYear(), now.getMonth(), 1).getTime() : period === 'year' ? new Date(now.getFullYear(), 0, 1).getTime() : 0;
+  const T = tripStats().filter(t => t.start >= from);
+  const F = fuelCfg(), cons = realConsumption(F) || F.cons;
+  const km = T.reduce((a, t) => a + t.dist, 0)/1000;
+  const total = T.reduce((a, t) => a + (t.end - t.start), 0)/1000;
+  const moving = T.reduce((a, t) => a + (t.moving || 0), 0);
+  const max = T.reduce((a, t) => Math.max(a, t.max || 0), 0);
+  const longest = T.reduce((a, t) => Math.max(a, t.dist), 0)/1000;
+  const fuelLog = (F.log || []).filter(e => e.t >= from);
+  const spent = fuelLog.reduce((a, e) => a + (e.cost || 0), 0);
+  const litresBought = fuelLog.reduce((a, e) => a + (e.liters || 0), 0);
+  const estL = km*cons/100;
+  const st = mk('div', 'stats');
+  const tile = (v, u, l) => { const s = mk('div', 'stat'), n = mk('b', null, v); if(u) n.append(mk('small', null, ' ' + u)); s.append(n, mk('span', null, l)); st.append(s); };
+  tile(fmtNum(km, km < 100 ? 1 : 0), 'km', 'Toplam yol');
+  tile(T.length, '', 'Sürüş');
+  tile(fmtTime(total), '', 'Toplam süre');
+  tile(fmtTime(moving), '', 'Hareket süresi');
+  tile(moving > 0 ? Math.round(km/(moving/3600)) : 0, 'km/sa', 'Ortalama hız');
+  tile(Math.round(max), 'km/sa', 'En yüksek hız');
+  tile(fmtNum(longest), 'km', 'En uzun sürüş');
+  tile(T.length ? fmtNum(km/T.length) : 0, 'km', 'Sürüş başına');
+  tile(fmtNum(estL), 'L', 'Tahmini yakıt');
+  tile(fmtNum(cons), 'L/100', realConsumption(F) ? 'Gerçek tüketim' : 'Ayarlanan tüketim');
+  tile(spent ? fmtTL(spent) : (F.price ? '≈ ' + fmtTL(estL*F.price) : '—'), '', spent ? 'Yakıt harcaması' : 'Tahmini yakıt gideri');
+  tile(km > 0 && (spent || F.price) ? fmtNum((spent || estL*F.price)/km, 2) : '—', km > 0 && (spent || F.price) ? '₺/km' : '', 'Km başına yakıt');
+  b.append(st);
+  const odo = bikeKm();
+  b.append(mk('p', 's-msg', (odo != null ? `Motor göstergesi ≈ ${fmtKm(odo)}. ` : '') + (litresBought ? `Bu dönemde ${fmtNum(litresBought)} L yakıt kaydı var. ` : '') + 'Değerler MotoNav ile kaydedilen sürüşlerden hesaplanır.'));
+}
+
+/* ================= GPX routes ================= */
+function parseGpx(text){
+  const doc = new DOMParser().parseFromString(text, 'application/xml');
+  if(doc.querySelector('parsererror')) throw new Error('GPX okunamadı');
+  const get = sel => [...doc.getElementsByTagName(sel)].map(n => [+n.getAttribute('lon'), +n.getAttribute('lat')]).filter(p => !isNaN(p[0]) && !isNaN(p[1]));
+  let pts = get('trkpt'); if(pts.length < 2) pts = get('rtept'); if(pts.length < 2) pts = get('wpt');
+  if(pts.length < 2) throw new Error('Dosyada rota noktası yok');
+  const nameEl = doc.querySelector('trk > name, rte > name, metadata > name, name');
+  return {name:(nameEl && nameEl.textContent.trim()) || 'GPX rota', pts};
+}
+function simplifyByDistance(pts, minGap){
+  const out = [pts[0]]; let last = pts[0];
+  for(let i = 1; i < pts.length - 1; i++){
+    if(hav({lat:last[1], lon:last[0]}, {lat:pts[i][1], lon:pts[i][0]}) >= minGap){ out.push(pts[i]); last = pts[i]; }
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
+function trackLength(pts){ let d = 0; for(let i = 1; i < pts.length; i++) d += hav({lat:pts[i-1][1], lon:pts[i-1][0]}, {lat:pts[i][1], lon:pts[i][0]}); return d; }
+function saveGpx(g){
+  let gap = 15, pts = g.pts;
+  while(pts.length > 1500){ gap *= 2; pts = simplifyByDistance(g.pts, gap); }
+  const item = {id:Date.now(), name:g.name, pts:pts.map(p => [+p[0].toFixed(5), +p[1].toFixed(5)]), dist:Math.round(trackLength(pts))};
+  const list = [item, ...store.get('gpx', [])].slice(0, 15);
+  while(list.length && !store.set('gpx', list)) list.pop();
+  return item;
+}
+function gpxVia(g){
+  // up to 14 evenly spaced points (by distance) for the router to pass through
+  const total = g.dist || trackLength(g.pts), n = Math.min(14, Math.max(1, Math.floor(total/3000)));
+  const out = []; let acc = 0, next = total/(n + 1);
+  for(let i = 1; i < g.pts.length - 1 && out.length < n; i++){
+    acc += hav({lat:g.pts[i-1][1], lon:g.pts[i-1][0]}, {lat:g.pts[i][1], lon:g.pts[i][0]});
+    if(acc >= next){ out.push({lat:g.pts[i][1], lon:g.pts[i][0]}); next += total/(n + 1); }
+  }
+  return out;
+}
+function startGpx(g, fromNearest){
+  let pts = g.pts;
+  if(fromNearest && pos){
+    let best = 0, bd = Infinity;
+    pts.forEach((p, i) => { const d = hav(pos, {lat:p[1], lon:p[0]}); if(d < bd){ bd = d; best = i; } });
+    pts = pts.slice(best);
+  }
+  if(pts.length < 2){ toast('Rotanın sonuna çok yakınsın.'); return; }
+  const part = {pts, dist:trackLength(pts)};
+  const start = {lat:pts[0][1], lon:pts[0][0]}, end = pts[pts.length - 1];
+  const v = [start, ...gpxVia(part)];
+  chooseDestination({name:g.name, lat:end[1], lon:end[0]}, {via:v, gpx:pts});
+}
+function openGpx(){
+  openSheet('GPX', 'GPX rotalarım');
+  const b = $('#s-body');
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream'; input.hidden = true;
+  input.onchange = async () => {
+    const f = input.files && input.files[0]; if(!f) return;
+    try{ const g = parseGpx(await f.text()); const item = saveGpx(g); toast(`"${item.name}" eklendi · ${fmtDist(item.dist)}`); openGpx(); }
+    catch(e){ toast('GPX yüklenemedi: ' + e.message, 5000); }
+  };
+  const add = mk('button', 'primary wide', 'GPX dosyası yükle'); add.onclick = () => input.click();
+  const acts = mk('div', 's-actions'); acts.append(add); b.append(input, acts);
+  const list = store.get('gpx', []);
+  if(!list.length) b.append(mk('p', 's-msg', 'Paylaşılan tur rotalarını (.gpx) Dosyalar uygulamasından seçip yükleyebilirsin. Rota boyunca sesli yönlendirme yapılır, kesik turuncu çizgi orijinal rotayı gösterir.'));
+  list.forEach(g => {
+    const row = mk('div', 'row'), m = mk('div', 'r-main');
+    const near = pos ? Math.min(...g.pts.filter((_, i) => i % 5 === 0).map(p => hav(pos, {lat:p[1], lon:p[0]}))) : null;
+    m.append(mk('div', 'r-t', g.name), mk('div', 'r-s', fmtDist(g.dist) + (near != null ? ' · rotaya ' + fmtDist(near) : '')));
+    const go = mk('button', 'act', 'Başla'); go.onclick = () => startGpx(g, false);
+    const more = mk('button', 'iconbtn'); more.setAttribute('aria-label', 'Seçenekler');
+    more.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>';
+    more.onclick = () => {
+      openSheet('GPX', g.name);
+      const bb = $('#s-body'), a2 = mk('div', 's-actions');
+      const s1 = mk('button', 'primary wide', 'Baştan başla'); s1.onclick = () => startGpx(g, false);
+      const s2 = mk('button', 'secondary wide', 'En yakın noktadan katıl'); s2.onclick = () => startGpx(g, true);
+      const sh = mk('button', 'secondary', 'Haritada göster'); sh.onclick = () => { closeSheet(); gpxShown = g.pts; drawRoute(); const bd = new maplibregl.LngLatBounds(); g.pts.forEach(p => bd.extend(p)); map.fitBounds(bd, {padding:60, duration:600}); };
+      const del = mk('button', 'secondary', 'Sil');
+      del.onclick = () => { if(!del.dataset.c){ del.dataset.c = 1; del.textContent = 'Silinsin mi?'; return; } store.set('gpx', store.get('gpx', []).filter(x => x.id !== g.id)); openGpx(); };
+      const back = mk('button', 'secondary wide', 'Listeye dön'); back.onclick = openGpx;
+      a2.append(s1, s2, sh, del, back); bb.append(mk('p', 's-msg', fmtDist(g.dist) + ' · ' + g.pts.length + ' nokta'), a2);
+    };
+    row.append(m, more, go); b.append(row);
+  });
+}
+
+/* ================= add a stop (any place) ================= */
+let stopSearchSeq = 0;
+function openStopSearch(){
+  openSheet(navigating ? 'Sürüş' : 'Rota', 'Ara durak ekle');
+  const b = $('#s-body');
+  const bar = mk('div', 'searchbar sheet-search');
+  const inp = document.createElement('input'); inp.type = 'search'; inp.placeholder = 'Durak ara (yer, adres, link)'; inp.autocomplete = 'off'; inp.id = 'stop-q';
+  bar.append(inp); b.append(bar);
+  const ul = mk('ul', 'stop-results');
+  const quick = mk('div', 'chips-inline');
+  const pick = d => addStop(d);
+  const fuel = mk('button', 'chip fav'); fuel.append(mk('span', null, 'Benzinlik')); fuel.onclick = openFuel; quick.append(fuel);
+  store.get('favs', []).forEach(f => { const c = mk('button', 'chip'); c.innerHTML = ICON.star; c.append(mk('span', null, f.name)); c.onclick = () => pick(f); quick.append(c); });
+  const p = store.get('park', null); if(p){ const c = mk('button', 'chip'); c.append(mk('span', null, 'P · Park yeri')); c.onclick = () => pick({name:'Park yeri', lat:p.lat, lon:p.lon}); quick.append(c); }
+  b.append(quick, ul);
+  const run = debounce(async () => {
+    const q = inp.value.trim(), seq = ++stopSearchSeq;
+    if(q.length < 3){ ul.innerHTML = ''; return; }
+    const r = await geocode(q);
+    if(seq !== stopSearchSeq) return;
+    renderResults(r.list, r.hint, ul, pick);
+  }, 380);
+  inp.addEventListener('input', run);
+  setTimeout(() => inp.focus(), 50);
+}
+function addStop(d){
+  const st = {name:d.name, lat:d.lat, lon:d.lon};
+  closeSheet();
+  if(navigating){
+    // insert where it fits best along the current route
+    const pr = route ? projectOnRoute(route, st, 0) : null;
+    const idx = stops.findIndex(s => route && projectOnRoute(route, s, 0).along > (pr ? pr.along : 0));
+    if(idx < 0) stops.push(st); else stops.splice(idx, 0, st);
+    renderStops();
+    if(pos) reroute(pos, 'Durak eklendi. Rota yeniden hesaplanıyor');
+  } else if(dest){
+    stops.push(st); renderStops(); computePreview();
+  }
+}
+
+/* ================= backup ================= */
+async function shareOrDownload(file){
+  try{ if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file], title:file.name}); return; } }
+  catch(e){ if(e.name === 'AbortError') return; }
+  const a = document.createElement('a'); a.href = URL.createObjectURL(file); a.download = file.name;
+  document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 3000);
+}
+const BACKUP_SKIP = ['facGeom', 'hintShown', 'maintToast', 'recLive'];
+function backupData(){
+  const data = {};
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      if(!k.startsWith('mn_')) continue;
+      const key = k.slice(3); if(BACKUP_SKIP.includes(key)) continue;
+      data[key] = JSON.parse(localStorage.getItem(k));
+    }
+  }catch(e){}
+  return data;
+}
+function openBackup(){
+  openSheet('Yedekleme', 'Yedekle ve geri yükle');
+  const b = $('#s-body'), d = backupData();
+  const count = (k) => Array.isArray(d[k]) ? d[k].length : 0;
+  b.append(mk('p', 's-msg', `Telefondaki veriler: ${count('tripStats') || count('trips')} sürüş, ${count('favs')} kayıtlı yer, ${count('gpx')} GPX rota, ${d.fuel && d.fuel.log ? d.fuel.log.length : 0} yakıt kaydı, bakım ve ayarlar.`));
+  const acts = mk('div', 's-actions');
+  const exp = mk('button', 'primary wide', 'Yedeği dışa aktar');
+  exp.onclick = () => {
+    const payload = {app:'MotoNav', version:VERSION, created:new Date().toISOString(), data:backupData()};
+    const name = 'motonav-yedek-' + new Date().toISOString().slice(0, 10) + '.json';
+    shareOrDownload(new File([JSON.stringify(payload)], name, {type:'application/json'}));
+  };
+  const input = document.createElement('input'); input.type = 'file'; input.accept = '.json,application/json'; input.hidden = true;
+  const imp = mk('button', 'secondary wide', 'Yedekten geri yükle');
+  imp.onclick = () => input.click();
+  input.onchange = async () => {
+    const f = input.files && input.files[0]; if(!f) return;
+    try{
+      const j = JSON.parse(await f.text());
+      if(j.app !== 'MotoNav' || !j.data) throw new Error('Bu bir MotoNav yedeği değil');
+      const n = j.data;
+      b.innerHTML = '';
+      b.append(mk('p', 's-msg', `Yedek tarihi: ${new Date(j.created).toLocaleString('tr-TR')}. İçinde ${(n.tripStats || n.trips || []).length} sürüş, ${(n.favs || []).length} kayıtlı yer, ${(n.gpx || []).length} GPX rota var. Geri yükleyince bu telefondaki mevcut veriler yedektekilerle değişir.`));
+      const ok = mk('button', 'primary wide', 'Geri yükle'), cancel = mk('button', 'secondary wide', 'Vazgeç');
+      ok.onclick = () => {
+        Object.keys(backupData()).forEach(k => { try{ localStorage.removeItem('mn_' + k); }catch(e){} });
+        Object.entries(n).forEach(([k, v]) => store.set(k, v));
+        toast('Yedek geri yüklendi, uygulama yenileniyor…', 2000);
+        setTimeout(() => location.reload(), 1200);
+      };
+      cancel.onclick = openBackup;
+      const a2 = mk('div', 's-actions'); a2.append(ok, cancel); b.append(a2);
+    }catch(e){ toast('Yedek okunamadı: ' + e.message, 5000); }
+  };
+  acts.append(exp, imp); b.append(input, acts);
+  b.append(mk('p', 's-msg', 'Yedek dosyasını Dosyalar\'a, iCloud Drive\'a ya da kendine mesaj olarak kaydedebilirsin. Telefon değiştirince ya da Safari verileri silinince bu dosyayla geri yükleyebilirsin. Ayda bir yedek almanı öneririm.'));
+}
+
+/* ================= menu ================= */
+function openMenu(){
+  openSheet('MotoNav v' + VERSION, 'Menü');
+  const b = $('#s-body'), grid = mk('div', 'menu-grid');
+  const fi = fuelInfo(), km = bikeKm();
+  const dueCount = km == null ? 0 : maintList().filter(m => { const S = maintStatus(m, km); return S.left != null && S.left <= 300; }).length;
+  [
+    ['Sürüşlerim', 'Kayıtlar ve GPX dışa aktarma', openTrips],
+    ['İstatistikler', 'Km, hız, yakıt ve masraf', () => openStats('month')],
+    ['Yakıt', fi ? `Menzil ${Math.round(fi.range)} km · %${Math.round(fi.pct*100)}` : 'Depo ve tüketim', openFuelStatus],
+    ['Bakım', dueCount ? `${dueCount} kalem yaklaşıyor` : (km == null ? 'Kilometreyi gir' : fmtKm(km)), openMaint],
+    ['GPX rotalarım', 'Tur rotası yükle ve sür', openGpx],
+    ['Ayarlar', 'Hız, radar, ses, görünüm', openSettings],
+    ['Yedekleme', 'Verileri dosyaya kaydet', openBackup]
+  ].forEach(([t, s, fn]) => { const c = mk('button', 'menu-tile'); c.append(mk('b', null, t), mk('span', null, s)); c.onclick = fn; grid.append(c); });
+  b.append(grid);
+}
+
+/* ================= crash-safe ride log ================= */
+setInterval(() => { if(rec && navigating) store.set('recLive', rec); }, 30000);
+function recoverRide(){
+  const r = store.get('recLive', null);
+  if(!r) return;
+  store.set('recLive', null);
+  if(r.dist >= 300){ rec = r; recSave(true); }
+}
 
 /* ================= navigation ================= */
 function newNavState(){ return {seg:0, next:1, ann:{}, off:0, lastReroute:0, rerouting:false, onRoute:false, startT:Date.now()}; }
@@ -1712,16 +2227,18 @@ function startNav(demo){
   setUI('nav'); $('#demo-tag').hidden = !demo;
   if(!demo && !dest.walk) recStart();
   if(!dest.walk) onRouteChanged(); else clearSafety();
+  if(!demo && !dest.walk) checkFuelOnStart();
+  renderFuelBadge();
   lockScreen();
   const first = route.mans[0];
-  setTimeout(() => speak((dest.walk ? 'Yürüyüş başladı. ' : 'Sürüş başladı. ') + (first ? first.pre : '')), 150);
+  setTimeout(() => speak((dest && dest.walk ? 'Yürüyüş başladı. ' : 'Sürüş başladı. ') + (first ? first.pre : '')), 150);
   if(demo) startDemo();
   else if(pos){ updateNav(pos); camera(pos); }
 }
 function stopNav(){
   navigating = false; navState = null;
   if(demoTimer){ clearInterval(demoTimer); demoTimer = null; }
-  recSave(); closeSheet(); clearSafety();
+  recSave(); closeSheet(); clearSafety(); renderFuelBadge();
   unlockScreen(); speechSynthesis && speechSynthesis.cancel();
   $('#offroute').classList.remove('show');
   clearTrip();
@@ -1769,7 +2286,7 @@ function updateNav(f){
   const dist = Math.max(0, R.cum[man.idx] - along);
   const remain = Math.max(0, R.total - along);
 
-  if(!dest.walk){ updateLimit(f, pr.i); updateCameras(along, f); }
+  if(dest && !dest.walk){ updateLimit(f, pr.i); updateCameras(along, f); if(!demoTimer) checkFuelDuring(); }
 
   // maneuver card
   $('#m-dist').textContent = fmtDist(dist);
@@ -1802,9 +2319,12 @@ async function reroute(f, msg){
   $('#offroute').classList.add('show');
   if(msg || Date.now() - lastRerouteSpeech > 20000){ lastRerouteSpeech = Date.now(); speak(msg || 'Rota yeniden hesaplanıyor'); }
   try{
-    const r = (await fetchRoutes(f, [...stops, dest], 0))[0];
-    r.tolls = dest.walk ? null : estimateTolls(r);
-    if(!navigating) return;
+    if(via.length && route) via = via.filter(v => projectOnRoute(route, v, 0).along > (navState ? navState.along || 0 : 0) - 50);
+    const target = dest;
+    if(!target) return;
+    const r = (await fetchRoutes(f, routePoints(target), 0))[0];
+    if(!navigating || dest !== target) return;
+    r.tolls = target.walk ? null : estimateTolls(r);
     route = r; drawRoute(); navState = newNavState(); navState.lastReroute = Date.now(); navState.onRoute = true;
     onRouteChanged();
   }catch(e){
@@ -1859,13 +2379,13 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 /* ================= boot ================= */
 syncToggles(); renderChips(); startGPS(); enableCompass();
 document.querySelector('#cam-alert .cam-ico').innerHTML = ICON.cam;
-renderPark();
+renderPark(); tripStats(); recoverRide(); maintReminder();
 setTimeout(() => loadFacilities(), 2500);
 if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.test(navigator.userAgent) && !store.get('hintShown', false)){
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Yeni: Apple Haritalar veya Google Haritalar paylaşım linkini arama kutusuna yapıştırarak hedef seçebilirsin.';
+const WHATS_NEW = 'Yeni: Menü düğmesi — yakıt menzili, bakım takibi, sürüş istatistikleri, GPX rotaları, yedekleme. Rotaya istediğin yeri ara durak ekleyebilirsin.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
