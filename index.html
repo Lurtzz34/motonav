@@ -206,6 +206,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
   <button id="btn-mode" class="fab" aria-label="Gece / gündüz haritası"></button>
   <button id="btn-fuel" class="fab" aria-label="Yakındaki benzinlikler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6.5 8h5"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg></button>
   <button id="btn-trips" class="fab only-idle" aria-label="Sürüşlerim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg></button>
+  <button id="btn-view" class="fab only-nav" aria-label="Görünüm"></button>
   <button id="btn-center" class="fab" aria-label="Konumuma ortala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
 </div>
 
@@ -264,7 +265,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 
 <script>
 'use strict';
-const VERSION = '1.2.0';
+const VERSION = '1.3.0';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -490,24 +491,77 @@ function onGeoErr(e){
   else if(!pos) toast('Konum bekleniyor… Açık alanda daha hızlı bulunur.', 4000);
 }
 
+/* ---------- heading: GPS course when moving, compass when slow, movement as last resort */
+let compass = null; // {h, t}
+function screenAngle(){
+  const a = (screen.orientation && typeof screen.orientation.angle === 'number') ? screen.orientation.angle : (window.orientation || 0);
+  return ((a % 360) + 360) % 360;
+}
+function onOrient(e){
+  let h = null;
+  if(typeof e.webkitCompassHeading === 'number' && !isNaN(e.webkitCompassHeading)) h = e.webkitCompassHeading;
+  else if(e.absolute && typeof e.alpha === 'number') h = 360 - e.alpha;
+  if(h == null) return;
+  h = (h + screenAngle()) % 360;
+  compass = {h, t:Date.now()};
+  if(pos && pos.speed < 4){ pos.heading = h; onHeadingChange(h); }
+}
+let compassOn = false;
+function enableCompass(){
+  if(compassOn) return;
+  const add = () => { compassOn = true; window.addEventListener('deviceorientationabsolute', onOrient); window.addEventListener('deviceorientation', onOrient); };
+  try{
+    if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      DeviceOrientationEvent.requestPermission().then(s => { if(s === 'granted') add(); }).catch(() => {});
+    } else add();
+  }catch(e){}
+}
+let lastRot = 0;
+function onHeadingChange(h){
+  if(userMarker) userMarker.setRotation(h);
+  if(!navigating || !follow || settings.view === 'north') return;
+  const now = Date.now();
+  if(now - lastRot < 250) return;
+  const diff = Math.abs(((h - map.getBearing() + 540) % 360) - 180);
+  if(diff < 4) return;
+  lastRot = now;
+  map.rotateTo(h, {duration:240, easing:t => t});
+}
+
+/* ---------- smooth marker movement between GPS fixes */
+let markerAnim = null;
+function moveMarker(to){
+  if(!userMarker) return;
+  const from = userMarker.getLngLat ? userMarker.getLngLat() : null;
+  if(!from || hav({lat:from.lat, lon:from.lng}, to) > 150){ userMarker.setLngLat([to.lon, to.lat]); return; }
+  cancelAnimationFrame(markerAnim);
+  const t0 = performance.now(), dur = 850;
+  const step = now => {
+    const k = Math.min(1, (now - t0)/dur);
+    userMarker.setLngLat([from.lng + (to.lon - from.lng)*k, from.lat + (to.lat - from.lat)*k]);
+    if(k < 1) markerAnim = requestAnimationFrame(step);
+  };
+  markerAnim = requestAnimationFrame(step);
+}
+
 function handlePosition(f){
   // speed fallback
-  if(lastFix && (f.speed == null || isNaN(f.speed))){
+  if(lastFix && (f.speed == null || isNaN(f.speed) || f.speed < 0)){
     const dt = (f.t - lastFix.t)/1000;
     f.speed = dt > 0 ? hav(lastFix, f)/dt : 0;
   }
-  if(f.speed == null || isNaN(f.speed)) f.speed = 0;
-  // heading: trust GPS course only when moving
-  if(f.heading == null || isNaN(f.heading) || f.speed < 1.5){
-    if(headingAnchor && hav(headingAnchor, f) > 6){ f.heading = brg(headingAnchor, f); headingAnchor = f; }
-    else f.heading = pos ? pos.heading : 0;
-    if(!headingAnchor) headingAnchor = f;
-  } else headingAnchor = f;
+  if(f.speed == null || isNaN(f.speed) || f.speed < 0) f.speed = 0;
+  const gpsOk = f.heading != null && !isNaN(f.heading) && f.heading >= 0;
+  if(gpsOk && f.speed >= 3){ headingAnchor = f; }
+  else if(compass && Date.now() - compass.t < 2000){ f.heading = compass.h; }
+  else if(headingAnchor && hav(headingAnchor, f) > 4){ f.heading = brg(headingAnchor, f); headingAnchor = f; }
+  else { f.heading = gpsOk ? f.heading : (pos ? pos.heading : 0); if(!headingAnchor) headingAnchor = f; }
   lastFix = f; pos = f;
 
   if(!userMarker){
     userMarker = new maplibregl.Marker({element:meEl, rotationAlignment:'map', pitchAlignment:'map'}).setLngLat([f.lon, f.lat]).addTo(map);
-  } else userMarker.setLngLat([f.lon, f.lat]);
+  } else if(navigating) moveMarker(f);
+  else userMarker.setLngLat([f.lon, f.lat]);
   userMarker.setRotation(f.heading);
 
   while(posWaiters.length) posWaiters.shift()(f);
@@ -524,15 +578,36 @@ function waitPos(ms = 15000){
   return new Promise(res => { posWaiters.push(res); setTimeout(() => res(pos), ms); });
 }
 
-function camera(f){
+/* ---------- camera / view modes */
+const VIEWS = {
+  follow3d:{label:'3B takip', pitch:55, top:0.42, dz:0, north:false},
+  top:{label:'Üstten · yön yukarı', pitch:0, top:0.30, dz:-0.3, north:false},
+  north:{label:'Üstten · kuzey yukarı', pitch:0, top:0, dz:-0.5, north:true}
+};
+const VIEW_ORDER = ['follow3d', 'top', 'north'];
+if(!VIEWS[settings.view]) settings.view = 'follow3d';
+function camera(f, dur){
   if(!follow || !f) return;
+  const V = VIEWS[settings.view] || VIEWS.follow3d;
   const kmh = f.speed*3.6;
-  const zoom = kmh > 90 ? 15.2 : kmh > 55 ? 15.9 : 16.8;
-  map.easeTo({center:[f.lon, f.lat], bearing:f.heading, pitch:55, zoom,
-    padding:{top:Math.round(innerHeight*0.42), bottom:0, left:0, right:0},
-    duration:demoTimer ? 950 : 900, easing:t => t});
+  const zoom = (kmh > 90 ? 15.2 : kmh > 55 ? 15.9 : 16.8) + V.dz;
+  map.easeTo({center:[f.lon, f.lat], bearing:V.north ? 0 : f.heading, pitch:V.pitch, zoom,
+    padding:{top:Math.round(innerHeight*V.top), bottom:0, left:0, right:0},
+    duration:dur ?? (demoTimer ? 950 : 900), easing:t => t});
 }
+const VIEW_ICON = {
+  follow3d:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><path d="M6 20 10 4h4l4 16z"/><path d="M8 13h8"/></svg>',
+  top:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M12 7l4 9-4-2-4 2z" fill="currentColor"/></svg>',
+  north:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9.5 16V8l5 8V8"/></svg>'
+};
+function renderViewBtn(){ $('#btn-view').innerHTML = VIEW_ICON[settings.view]; $('#btn-view').setAttribute('aria-label', 'Görünüm: ' + VIEWS[settings.view].label); }
 function updateCenterBtn(){ $('#btn-center').classList.toggle('on', !follow && navigating); }
+$('#btn-view').onclick = () => {
+  settings.view = VIEW_ORDER[(VIEW_ORDER.indexOf(settings.view) + 1) % VIEW_ORDER.length];
+  saveSettings(); renderViewBtn(); toast(VIEWS[settings.view].label, 1500);
+  follow = true; updateCenterBtn(); if(pos) camera(pos, 500);
+};
+renderViewBtn();
 $('#btn-center').onclick = () => {
   if(!pos){ toast('Konum henüz bulunmadı.'); startGPS(); return; }
   if(navigating){ follow = true; updateCenterBtn(); camera(pos); }
@@ -761,13 +836,41 @@ function pointAt(R, d){
 // Source: KGM 2026 tariff tables (1 July 2026 for bridges and BOT motorways; KGM-run motorways keep the 1 Jan 2026 tariff).
 const TOLL_TARIFF = 'Temmuz 2026';
 const FACILITIES = [
-  {id:'b15', name:'15 Temmuz Şehitler Köprüsü', re:/15 Temmuz Şehitler Köprüsü/i, fee:25, eastOnly:true, approx:[29.0347, 41.0453]},
-  {id:'fsm', name:'Fatih Sultan Mehmet Köprüsü', re:/Fatih Sultan Mehmet Köprüsü/i, fee:25, eastOnly:true, approx:[29.0614, 41.0911]},
-  {id:'yss', name:'Yavuz Sultan Selim Köprüsü', re:/Yavuz Sultan Selim Köprüsü/i, fee:75, approx:[29.1117, 41.2019]},
-  {id:'ogz', name:'Osmangazi Köprüsü', re:/Osmangazi Köprüsü/i, fee:820, approx:[29.5147, 40.7519]},
-  {id:'c15', name:'1915 Çanakkale Köprüsü', re:/1915 Çanakkale Köprüsü/i, fee:295, approx:[26.6436, 40.3364]},
-  {id:'avr', name:'Avrasya Tüneli', re:/Avrasya Tüneli/i, fee:257.40, night:128.70, approx:[28.9950, 41.0000]}
+  {id:'b15', name:'15 Temmuz Şehitler Köprüsü', re:/15 Temmuz|Boğaziçi Köprüsü/i, fee:25, eastOnly:true, approx:[29.0347, 41.0453], box:[41.035,29.015,41.055,29.050]},
+  {id:'fsm', name:'Fatih Sultan Mehmet Köprüsü', re:/Fatih Sultan Mehmet/i, fee:25, eastOnly:true, approx:[29.0614, 41.0911], box:[41.080,29.045,41.100,29.080]},
+  {id:'yss', name:'Yavuz Sultan Selim Köprüsü', re:/Yavuz Sultan Selim/i, fee:75, approx:[29.1117, 41.2019], box:[41.190,29.090,41.215,29.135]},
+  {id:'ogz', name:'Osmangazi Köprüsü', re:/Osmangazi/i, fee:820, approx:[29.5147, 40.7519], box:[40.725,29.495,40.780,29.535], radius:1000},
+  {id:'c15', name:'1915 Çanakkale Köprüsü', re:/1915|Çanakkale Köprüsü/i, fee:295, approx:[26.6436, 40.3364], box:[40.300,26.580,40.380,26.720], radius:1500, needToll:true},
+  {id:'avr', name:'Avrasya Tüneli', re:/Avrasya/i, fee:257.40, night:128.70, approx:[28.9950, 41.0000], box:[40.975,28.940,41.015,29.060]}
 ];
+// Rough line down the middle of the Bosphorus (lon, lat), used to tell which crossing a route takes.
+const BOSPHORUS = [[28.985,40.985],[29.002,41.006],[29.0041,41.0211],[29.015,41.036],[29.0347,41.0453],[29.047,41.058],[29.052,41.077],[29.0614,41.0911],[29.068,41.112],[29.075,41.140],[29.072,41.170],[29.1117,41.2019],[29.13,41.235]];
+const bosId = lat => lat < 41.03 ? 'avr' : lat < 41.07 ? 'b15' : lat < 41.15 ? 'fsm' : 'yss';
+function segCross(p1, p2, p3, p4){
+  const d = (p2[0]-p1[0])*(p4[1]-p3[1]) - (p2[1]-p1[1])*(p4[0]-p3[0]);
+  if(!d) return -1;
+  const t = ((p3[0]-p1[0])*(p4[1]-p3[1]) - (p3[1]-p1[1])*(p4[0]-p3[0])) / d;
+  const u = ((p3[0]-p1[0])*(p2[1]-p1[1]) - (p3[1]-p1[1])*(p2[0]-p1[0])) / d;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? t : -1;
+}
+function bosphorusCrossings(R){
+  const c = R.coords, raw = [];
+  const ferries = R.mans.filter(m => m.ferry).map(m => [R.cum[m.idx], R.cum[m.end]]);
+  for(let i = 0; i < c.length - 1; i++){
+    const a = c[i], b = c[i+1];
+    if(Math.max(a[1], b[1]) < 40.98 || Math.min(a[1], b[1]) > 41.24 || Math.max(a[0], b[0]) < 28.98 || Math.min(a[0], b[0]) > 29.14) continue;
+    for(let k = 0; k < BOSPHORUS.length - 1; k++){
+      const t = segCross(a, b, BOSPHORUS[k], BOSPHORUS[k+1]);
+      if(t < 0) continue;
+      const along = R.cum[i] + t*(R.cum[i+1] - R.cum[i]);
+      if(ferries.some(([f0, f1]) => along >= f0 - 50 && along <= f1 + 50)) continue;
+      raw.push({along, lat:a[1] + (b[1]-a[1])*t, east:b[0] > a[0]});
+    }
+  }
+  const res = [];
+  raw.forEach(x => { const p = res[res.length-1]; if(p && x.along - p.along < 3000 && p.east !== x.east){ res.pop(); return; } res.push(x); });
+  return res;
+}
 // TL per km for class 6, capped at the full-length fare. Distance-based, so the result is an estimate.
 const NETWORKS = {
   'O-1':{name:'15 Temmuz Köprüsü bağlantısı', rate:0}, 'O-2':{name:'FSM Köprüsü bağlantısı', rate:0}, 'AVR':{name:'Avrasya Tüneli bağlantısı', rate:0},
@@ -800,17 +903,19 @@ function classifyNet(refs, pt){
 }
 let facGeom = store.get('facGeom', null), facLoading = null;
 function loadFacilities(){
-  if(facGeom && Date.now() - facGeom.t < 180*864e5) return Promise.resolve(facGeom);
+  if(facGeom && facGeom.v === 2 && Date.now() - facGeom.t < 180*864e5) return Promise.resolve(facGeom);
   if(facLoading) return facLoading;
-  const names = FACILITIES.map(f => f.name).join('|');
-  const q = `[out:json][timeout:40];way["highway"]["name"~"${names}"](39.9,25.9,41.5,29.9);out geom;`;
-  facLoading = fetchT('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 45000)
+  const parts = FACILITIES.map(f => `way["highway"]["name"~"Köprü|Tünel|Avrasya",i](${f.box.join(',')});`).join('');
+  const q = `[out:json][timeout:30];(${parts});out geom;`;
+  facLoading = fetchT('https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q), 40000)
     .then(r => r.json()).then(j => {
-      const g = {t:Date.now()};
+      const g = {t:Date.now(), v:2};
       (j.elements || []).forEach(w => {
         const nm = (w.tags && w.tags.name) || '';
-        const F = FACILITIES.find(f => f.re.test(nm));
-        if(!F || !w.geometry || (w.tags.bridge !== 'yes' && w.tags.tunnel !== 'yes')) return;
+        if(!w.geometry || (w.tags.bridge !== 'yes' && !w.tags.tunnel && !/Avrasya/i.test(nm))) return;
+        const mid = w.geometry[Math.floor(w.geometry.length/2)];
+        const F = FACILITIES.find(f => f.re.test(nm) && mid.lat >= f.box[0] && mid.lat <= f.box[2] && mid.lon >= f.box[1] && mid.lon <= f.box[3]);
+        if(!F) return;
         (g[F.id] = g[F.id] || []).push(...w.geometry.map(p => [+p.lon.toFixed(5), +p.lat.toFixed(5)]));
       });
       if(Object.keys(g).length > 3){ facGeom = g; store.set('facGeom', g); }
@@ -818,8 +923,8 @@ function loadFacilities(){
     }).catch(() => facGeom).finally(() => { facLoading = null; });
   return facLoading;
 }
-function matchFacility(R, F){
-  const pts = facGeom && facGeom[F.id];
+function matchFacility(R, F, crossings){
+  const pts = facGeom && facGeom.v === 2 && facGeom[F.id];
   if(pts && pts.length){
     let lo = Infinity, hi = -Infinity, hits = 0;
     const step = Math.max(1, Math.floor(pts.length / 80));
@@ -827,21 +932,26 @@ function matchFacility(R, F){
       const pr = projectOnRoute(R, {lon:pts[k][0], lat:pts[k][1]}, 0);
       if(pr.off < 30){ hits++; lo = Math.min(lo, pr.along); hi = Math.max(hi, pr.along); }
     }
-    return hits >= 2 && hi - lo > 250 ? {from:lo, to:hi} : null;
+    if(hits >= 2 && hi - lo > 250) return {from:lo, to:hi, east:pointAt(R, lo).lon < pointAt(R, hi).lon};
   }
-  // no geometry yet: approximate centre point, only on a toll stretch
+  // Bosphorus: decide by where the route crosses the strait
+  if(['b15','fsm','yss','avr'].includes(F.id)){
+    const x = crossings.find(c => bosId(c.lat) === F.id);
+    return x ? {from:Math.max(0, x.along - 300), to:Math.min(R.total, x.along + 300), east:x.east} : null;
+  }
+  // others: near the bridge centre (over water)
   const pr = projectOnRoute(R, {lon:F.approx[0], lat:F.approx[1]}, 0);
-  if(pr.off > 500) return null;
-  if(!R.tollSegs.some(s => pr.along >= s.from - 300 && pr.along <= s.to + 300)) return null;
-  return {from:Math.max(0, pr.along - 400), to:Math.min(R.total, pr.along + 400)};
+  if(pr.off > (F.radius || 500)) return null;
+  if(F.needToll && !R.tollSegs.some(s => pr.along >= s.from - 500 && pr.along <= s.to + 500)) return null;
+  return {from:Math.max(0, pr.along - 400), to:Math.min(R.total, pr.along + 400), east:true};
 }
 function estimateTolls(R){
-  const items = [], spans = [];
+  const items = [], spans = [], crossings = bosphorusCrossings(R);
   FACILITIES.forEach(F => {
-    const m = matchFacility(R, F); if(!m) return;
+    const m = matchFacility(R, F, crossings); if(!m) return;
     spans.push(m);
     let fee = F.fee, note = '';
-    if(F.eastOnly && pointAt(R, m.from).lon > pointAt(R, m.to).lon){ fee = 0; note = 'Asya → Avrupa yönü ücretsiz'; }
+    if(F.eastOnly && !m.east){ fee = 0; note = 'Asya → Avrupa yönü ücretsiz'; }
     if(F.night){
       const t = new Date(Date.now() + R.time * (m.from / Math.max(1, R.total)) * 1000);
       if(t.getHours() < 5){ fee = F.night; note = 'Gece tarifesi (00:00–04:59)'; }
@@ -936,7 +1046,7 @@ async function computePreview(){
     routes = rs; selectRoute(0);
     $('#p-go').disabled = $('#p-demo').disabled = false;
     fitRoute();
-    if(rs.some(r => r.tollSegs.length) && !(facGeom && facGeom.t)){
+    if(!(facGeom && facGeom.v === 2)){
       loadFacilities().then(g => {
         if(!g || routes !== rs || navigating) return;
         rs.forEach(r => r.tolls = estimateTolls(r)); selectRoute(selRoute);
@@ -1173,7 +1283,7 @@ document.addEventListener('visibilitychange', () => { if(document.visibilityStat
 function newNavState(){ return {seg:0, next:1, ann:{}, off:0, lastReroute:0, rerouting:false}; }
 function startNav(demo){
   if(!route) return;
-  unlockSpeech();
+  unlockSpeech(); enableCompass();
   navigating = true; follow = true; navState = newNavState();
   routes = [route]; selRoute = 0; drawRoute(); closeSheet();
   setUI('nav'); $('#demo-tag').hidden = !demo;
@@ -1206,10 +1316,17 @@ function updateNav(f){
   const pr = projectOnRoute(R, f, S.seg);
   S.seg = pr.i;
 
-  // off-route detection
-  const tol = Math.max(40, Math.min(f.acc || 0, 60) + 20);
-  S.off = pr.off > tol ? S.off + 1 : 0;
-  if(S.off >= 3 && !S.rerouting && Date.now() - S.lastReroute > 10000){ reroute(f); }
+  // off-route detection: distance from the line plus heading mismatch (catches side roads quickly)
+  const acc = Math.min(f.acc || 10, 50);
+  const tol = Math.max(20, Math.min(45, acc + 12));
+  const pa = R.coords[pr.i], pb = R.coords[Math.min(pr.i + 1, R.coords.length - 1)];
+  const segBrg = brg({lat:pa[1], lon:pa[0]}, {lat:pb[1], lon:pb[0]});
+  const hdgDiff = Math.abs(((f.heading - segBrg + 540) % 360) - 180);
+  const wrongWay = f.speed > 3 && pr.off > 12 && hdgDiff > 50;
+  const bad = pr.off > tol || wrongWay;
+  S.off = bad ? S.off + 1 : 0;
+  const now = Date.now();
+  if(!S.rerouting && now - S.lastReroute > 5000 && (S.off >= 2 || (bad && pr.off > tol * 2.5))){ reroute(f); }
 
   const along = pr.along;
   let n = Math.max(1, S.next);
@@ -1305,12 +1422,13 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 }
 
 /* ================= boot ================= */
-syncToggles(); renderChips(); startGPS();
+syncToggles(); renderChips(); startGPS(); enableCompass();
+setTimeout(() => loadFacilities(), 2500);
 if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.test(navigator.userAgent) && !store.get('hintShown', false)){
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Yeni: Ücretli yollar haritada mor renkte; rotanın motosiklet geçiş ücreti toplamı ve dökümü önizlemede.';
+const WHATS_NEW = 'Yeni: üstten görünüm düğmesi, pusula ile anlık yön, yanyola sapınca 2 saniyede yeni rota, Avrasya Tüneli ücreti düzeltildi.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
