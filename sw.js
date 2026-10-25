@@ -1,5 +1,5 @@
 // MotoNav service worker — bump VERSION on every release so phones pick up the update.
-const VERSION = '1.3.0';
+const VERSION = '1.4.0';
 const SHELL_CACHE = 'motonav-shell-' + VERSION;
 const TILE_CACHE = 'motonav-tiles';
 const TILE_LIMIT = 3000;
@@ -38,15 +38,18 @@ self.addEventListener('fetch', e => {
   const url = new URL(req.url);
 
   // App page: network first so updates arrive immediately, cache as offline fallback
+  // App page: network first so updates arrive immediately; after 4 s on a weak signal use the saved copy
   if(req.mode === 'navigate'){
     e.respondWith((async () => {
-      try{
-        const res = await fetch(req);
-        const c = await caches.open(SHELL_CACHE); c.put('./index.html', res.clone());
+      const cached = (await caches.match('./index.html')) || (await caches.match('./'));
+      const net = fetch(req).then(async res => {
+        if(res.ok){ const c = await caches.open(SHELL_CACHE); await c.put('./index.html', res.clone()); }
         return res;
-      }catch(err){
-        return (await caches.match('./index.html')) || (await caches.match('./')) || Response.error();
-      }
+      });
+      if(!cached) return net.catch(() => Response.error());
+      const timeout = new Promise(r => setTimeout(() => r(null), 4000));
+      try{ return (await Promise.race([net, timeout])) || cached; }
+      catch(err){ return cached; }
     })());
     return;
   }
