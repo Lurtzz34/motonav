@@ -124,6 +124,19 @@ body[data-ui="idle"] #top + #fabs{}
 #cam-alert .cam-ico{width:22px;height:22px;flex:none}
 #limit{position:fixed;left:var(--gl);bottom:calc(var(--sb) + 96px);z-index:5;width:68px;height:68px;border-radius:50%;background:#fff;border:7px solid #d42020;display:grid;place-items:center;box-shadow:var(--shadow)}
 #limit span{font:700 28px/1 var(--f-num);color:#111;font-variant-numeric:tabular-nums}
+#limit small{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);white-space:nowrap;font:700 11px var(--f-ui);letter-spacing:.04em;background:var(--card);color:#fff;padding:2px 6px;border-radius:6px}
+#limit small:empty{display:none}
+.park-pin{width:38px;height:44px;border-radius:10px 10px 10px 2px;background:#1e6bff;color:#fff;font:700 24px/44px var(--f-ui);text-align:center;border:3px solid #fff;box-shadow:0 3px 8px rgba(0,0,0,.4);padding:0}
+.cam-row{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--amber-ink);background:color-mix(in srgb,var(--amber) 30%,var(--panel));padding:8px 12px;border-radius:12px}
+:root[data-mode="night"] .cam-row{color:var(--ink)}
+.set-h{margin-top:8px}
+.set-group{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border-radius:14px;background:var(--panel-2)}
+.set-group .seg{background:var(--panel)}
+.set-group .seg button{height:auto;min-height:44px;padding:6px 8px;line-height:1.2}
+.set-group .seg button[aria-pressed="true"]{background:var(--route);color:#fff}
+.set-group .r-t{font-weight:700;font-size:17px}
+.set-group .r-s{font-size:14px;color:var(--muted)}
+.primary.wide{grid-column:1 / -1;height:56px}
 #limit.over{animation:pulse 1s ease-in-out infinite}
 #spd.over{color:#ff5a5a}
 @keyframes pulse{50%{transform:scale(1.12)}}
@@ -221,6 +234,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
   <button id="btn-mode" class="fab" aria-label="Gece / gündüz haritası"></button>
   <button id="btn-fuel" class="fab" aria-label="Yakındaki benzinlikler"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linejoin="round" stroke-linecap="round"><path d="M4 21V5a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v16M3 21h12M6.5 8h5"/><path d="M14 10h2a2 2 0 0 1 2 2v4a1.5 1.5 0 0 0 3 0V8l-3-3"/></svg></button>
   <button id="btn-settings" class="fab only-idle" aria-label="Ayarlar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2.2"/><circle cx="10" cy="17" r="2.2"/></svg></button>
+  <button id="btn-park" class="fab only-idle" aria-label="Park yerini kaydet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M9.5 17V7h3.5a3 3 0 0 1 0 6H9.5"/></svg></button>
   <button id="btn-trips" class="fab only-idle" aria-label="Sürüşlerim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="6" r="2.5"/><path d="M8.5 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.5"/></svg></button>
   <button id="btn-view" class="fab only-nav" aria-label="Görünüm"></button>
   <button id="btn-center" class="fab" aria-label="Konumuma ortala"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
@@ -233,6 +247,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
   </div>
   <div id="p-sum" class="p-sum msg">Rota hesaplanıyor…</div>
   <button id="p-toll" class="toll-row" hidden></button>
+  <div id="p-cams" class="cam-row" hidden></div>
   <div id="p-alts" hidden></div>
   <div class="seg" id="p-style" role="group" aria-label="Rota tipi">
     <button data-style="fast">Hızlı</button><button data-style="short">Kısa</button><button data-style="curvy">Virajlı</button>
@@ -260,7 +275,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 </section>
 
 <div id="demo-tag" class="only-nav" hidden>DEMO SÜRÜŞ</div>
-<div id="limit" class="only-nav" hidden aria-label="Hız sınırı"><span id="limit-v"></span></div>
+<div id="limit" class="only-nav" hidden aria-label="Hız sınırı"><span id="limit-v"></span><small id="limit-src"></small></div>
 
 <section id="nav-bottom" class="only-nav">
   <div class="speed"><span id="spd">0</span><small>km/sa</small></div>
@@ -283,7 +298,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 
 <script>
 'use strict';
-const VERSION = '1.4.0';
+const VERSION = '1.5.0';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -615,6 +630,7 @@ function handlePosition(f){
   if(navigating && route) updateNav(f);
   if(navigating && rec && !demoTimer) recPoint(f);
   if(navigating) camera(f);
+  else if(document.body.dataset.ui === 'idle') loadNearCams(f);
 }
 
 function waitPos(ms = 15000){
@@ -719,7 +735,7 @@ function renderResults(list){
 /* ================= favourites / recents ================= */
 function samePlace(a, b){ return hav(a, b) < 40; }
 function pushRecent(d){
-  if(d.picked && d.name === 'İşaretlenen nokta') return;
+  if(d.walk || (d.picked && d.name === 'İşaretlenen nokta')) return;
   let rec = store.get('recent', []).filter(r => !samePlace(r, d));
   rec.unshift({name:d.name, lat:d.lat, lon:d.lon});
   store.set('recent', rec.slice(0, 8)); renderChips();
@@ -755,17 +771,22 @@ $('#p-fav').onclick = () => {
 
 /* ================= routing ================= */
 function costingOptions(costing){
+  if(costing === 'pedestrian') return {};
   const st = settings.routeStyle || 'fast';
   const o = {use_tolls:settings.avoidTolls ? 0 : 0.5, use_highways:(settings.avoidHighways || st === 'curvy') ? 0 : 1};
   if(costing === 'motorcycle'){ o.use_trails = 0; if(st === 'curvy') o.use_primary = 0.15; }
   if(st === 'short') o.shortest = true;
+  if(costing === 'motor_scooter'){ o.top_speed = 45; o.use_primary = st === 'curvy' ? 0.15 : 0.5; delete o.use_highways; }
   return o;
 }
 // pts = [stop1, ..., destination]; returns an array of routes (first = recommended)
 async function fetchRoutes(from, pts, alternates = 0){
-  try{ return await valhallaRoutes(from, pts, 'motorcycle', alternates); }
+  const walk = pts.length && pts[pts.length-1].walk;
+  const primary = walk ? 'pedestrian' : vclass() === 'L1' ? 'motor_scooter' : 'motorcycle';
+  try{ return await valhallaRoutes(from, pts, primary, alternates); }
   catch(e1){
-    console.warn('valhalla motorcycle', e1);
+    if(walk) throw e1;
+    console.warn('valhalla ' + primary, e1);
     try{ return await valhallaRoutes(from, pts, 'auto', alternates); }
     catch(e2){ console.warn('valhalla auto', e2); return await osrmRoutes(from, pts, alternates); }
   }
@@ -1067,7 +1088,11 @@ function showTollSheet(R){
 }
 
 /* ================= preview ================= */
-function setUI(s){ document.body.dataset.ui = s; updateCenterBtn(); }
+function setUI(s){
+  const prev = document.body.dataset.ui;
+  document.body.dataset.ui = s; updateCenterBtn();
+  if(prev !== s){ refreshCamMarkers(); renderCamInfo(); if(s === 'idle' && pos) loadNearCams(pos); }
+}
 const mk = (tag, cls, text) => { const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; };
 async function chooseDestination(d){
   dest = d; stops = []; routes = []; selRoute = 0; route = null;
@@ -1093,14 +1118,15 @@ async function computePreview(){
   try{
     const rs = await fetchRoutes(pos, [...stops, d], stops.length ? 0 : 2);
     if(seq !== routeReq || dest !== d) return;
-    rs.forEach(r => r.tolls = estimateTolls(r));
+    rs.forEach(r => r.tolls = d.walk ? null : estimateTolls(r));
     routes = rs; selectRoute(0);
     $('#p-go').disabled = $('#p-demo').disabled = false;
+    $('#p-go').textContent = d.walk ? 'Yürüyüşü başlat' : 'Sürüşü başlat';
     fitRoute();
     if(!(facGeom && facGeom.v === 2)){
       loadFacilities().then(g => {
         if(!g || routes !== rs || navigating) return;
-        rs.forEach(r => r.tolls = estimateTolls(r)); selectRoute(selRoute);
+        if(!d.walk){ rs.forEach(r => r.tolls = estimateTolls(r)); selectRoute(selRoute); }
       });
     }
   }catch(e){
@@ -1125,6 +1151,7 @@ function selectRoute(i){
   }
   box.hidden = routes.length < 2;
   renderTollRow();
+  if(!dest || !dest.walk) loadCameras(route); else { cams = []; refreshCamMarkers(); renderCamInfo(); }
 }
 function fitRoute(){
   if(!route) return;
@@ -1328,14 +1355,39 @@ async function lockScreen(){ try{ if('wakeLock' in navigator && !wakeLock){ wake
 function unlockScreen(){ try{ wakeLock && wakeLock.release(); }catch(e){} wakeLock = null; }
 document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible' && navigating) lockScreen(); });
 
-/* ================= speed limits & speed cameras ================= */
+/* ================= speed limits (motorcycle rules) ================= */
 function encodePolyline6(pts){
   let out = '', pl = 0, pn = 0;
   const enc = v => { v = v < 0 ? ~(v << 1) : v << 1; let s = ''; while(v >= 0x20){ s += String.fromCharCode((0x20 | (v & 0x1f)) + 63); v >>= 5; } return s + String.fromCharCode(v + 63); };
   for(const [lon, lat] of pts){ const a = Math.round(lat*1e6), b = Math.round(lon*1e6); out += enc(a - pl) + enc(b - pn); pl = a; pn = b; }
   return out;
 }
-// Speed limits come in chunks of the route ahead (~250 points) from the routing server's map data.
+// Karayolları Trafik Yönetmeliği Md. 100 (km/sa): şehir içi / şehir dışı çift yönlü / bölünmüş yol / otoyol
+const MOTO_RULES = {
+  L3:{name:'Motosiklet', sub:'L3 · 50 cc üstü', urban:50, twoWay:80, divided:90, motorway:100},
+  L1:{name:'Motorlu bisiklet', sub:'L1 · 50 cc ve altı', urban:30, twoWay:45, divided:45, motorway:null}
+};
+const ROAD_LABEL = {urban:'şehir içi', twoWay:'çift yönlü yol', divided:'bölünmüş yol', motorway:'otoyol'};
+const vclass = () => MOTO_RULES[settings.vclass] ? settings.vclass : 'L3';
+function roadType(s){
+  if(s.rc === 'motorway') return 'motorway';
+  if(s.rc === 'residential' || s.rc === 'service_other' || (s.density != null && s.density >= 8)) return 'urban';
+  if(s.oneway && (s.rc === 'trunk' || s.rc === 'primary' || s.rc === 'secondary')) return 'divided';
+  return 'twoWay';
+}
+// Posted sign wins in town (commissions may raise town limits for all vehicles);
+// outside town a higher sign meant for cars is capped at the motorcycle limit for that road type.
+function motoLimit(s){
+  const R = MOTO_RULES[vclass()], t = roadType(s), legal = R[t];
+  if(legal == null) return {lim:null, banned:true, t};
+  let lim = legal, src = 'genel';
+  if(s.posted){
+    if(t === 'urban' && vclass() === 'L3'){ lim = s.posted; src = 'levha'; }
+    else if(s.posted <= legal){ lim = s.posted; src = 'levha'; }
+    else { lim = legal; src = 'motosiklet'; }
+  }
+  return {lim, src, t};
+}
 const LIMIT_CHUNK = 250;
 let limitBusy = false;
 async function ensureLimits(R, i){
@@ -1348,82 +1400,117 @@ async function ensureLimits(R, i){
   if(i1 - i0 < 1) return;
   limitBusy = true;
   try{
-    const body = {encoded_polyline:encodePolyline6(R.coords.slice(i0, i1 + 1)), costing:'auto',
-      shape_match:'map_snap',
-      filters:{attributes:['edge.speed_limit', 'edge.begin_shape_index', 'edge.end_shape_index'], action:'include'}};
+    const body = {encoded_polyline:encodePolyline6(R.coords.slice(i0, i1 + 1)), costing:'auto', shape_match:'map_snap',
+      filters:{attributes:['edge.speed_limit', 'edge.road_class', 'edge.density', 'edge.traversability', 'edge.begin_shape_index', 'edge.end_shape_index'], action:'include'}};
     const r = await fetchT('https://valhalla1.openstreetmap.de/trace_attributes?json=' + encodeURIComponent(JSON.stringify(body)), 12000);
     if(!r.ok) throw new Error('HTTP ' + r.status);
     const j = await r.json();
     const segs = (j.edges || []).map(e => ({a:i0 + (e.begin_shape_index || 0), b:i0 + (e.end_shape_index || 0),
-      lim:typeof e.speed_limit === 'number' && e.speed_limit >= 5 && e.speed_limit <= 150 ? e.speed_limit : null}));
+      posted:typeof e.speed_limit === 'number' && e.speed_limit >= 5 && e.speed_limit <= 150 ? e.speed_limit : null,
+      rc:e.road_class || '', density:typeof e.density === 'number' ? e.density : null,
+      oneway:e.traversability === 'forward' || e.traversability === 'backward'}));
     R.limitChunks.push({i0, i1, segs});
   }catch(e){
     R.limitFails = (R.limitFails || 0) + 1;
-    R.limitChunks.push({i0, i1:Math.min(i1, i0 + 40), segs:[]}); // back off a little before retrying
+    R.limitChunks.push({i0, i1:Math.min(i1, i0 + 40), segs:[]});
   }finally{ limitBusy = false; }
 }
-function limitAt(R, i){
+function segAt(R, i){
   if(!R || !R.limitChunks) return null;
   for(let k = R.limitChunks.length - 1; k >= 0; k--){
     const c = R.limitChunks[k];
     if(i < c.i0 || i > c.i1) continue;
     const s = c.segs.find(s => i >= s.a && i < Math.max(s.b, s.a + 1));
-    if(s) return s.lim;
+    if(s) return s;
   }
   return null;
 }
-let overSince = 0, lastOverWarn = 0;
+let overSince = 0, lastOverWarn = 0, bannedWarned = null;
 function updateLimit(f, i){
   ensureLimits(route, i);
-  const lim = limitAt(route, i), sign = $('#limit'), kmh = f.speed*3.6;
-  if(!lim){ sign.hidden = true; $('#spd').classList.remove('over'); overSince = 0; return; }
-  sign.hidden = false; $('#limit-v').textContent = lim;
-  const over = kmh > lim + Math.max(5, lim*0.1);
+  const sign = $('#limit'), seg = segAt(route, i), kmh = f.speed*3.6;
+  const L = seg ? motoLimit(seg) : null;
+  if(L && L.banned){
+    sign.hidden = true;
+    if(bannedWarned !== route){ bannedWarned = route; speak('Dikkat, motorlu bisikletler otoyola giremez'); toast('Motorlu bisikletler otoyola giremez.', 5000); }
+    return;
+  }
+  if(!L || !L.lim || settings.limitShow === false){ sign.hidden = true; $('#spd').classList.remove('over'); overSince = 0; return; }
+  sign.hidden = false; $('#limit-v').textContent = L.lim;
+  $('#limit-src').textContent = L.src === 'levha' ? 'levha' : L.src === 'motosiklet' ? 'motosiklet' : ROAD_LABEL[L.t];
+  const tol = settings.tol ?? 10;
+  const over = kmh > L.lim * (1 + tol/100) + 1;
   $('#spd').classList.toggle('over', over); sign.classList.toggle('over', over);
   if(!over){ overSince = 0; return; }
   if(!overSince) overSince = Date.now();
   if(settings.speedWarn !== false && Date.now() - overSince > 3000 && Date.now() - lastOverWarn > 60000){
-    lastOverWarn = Date.now(); speak('Hız sınırı ' + lim);
+    lastOverWarn = Date.now(); speak('Hız sınırı ' + L.lim);
   }
 }
 
-// Speed cameras near the route (OpenStreetMap highway=speed_camera)
-let cams = [], camMarkers = [], camSeq = 0;
+/* ================= radars (speed cameras) ================= */
+let cams = [], nearCams = [], camMarkers = [], camSeq = 0, nearAt = null;
+function camQuery(around){ return `[out:json][timeout:25];(node["highway"="speed_camera"](${around});node["enforcement"="maxspeed"](${around}););out;`; }
+function parseCam(el){ const ms = parseInt((el.tags && el.tags.maxspeed) || '', 10); return {lat:el.lat, lon:el.lon, max:isNaN(ms) ? null : ms}; }
+function refreshCamMarkers(){
+  camMarkers.forEach(m => m.remove()); camMarkers = [];
+  if(settings.camShow === false) return;
+  const list = document.body.dataset.ui === 'idle' ? nearCams : cams;
+  list.forEach(c => {
+    const el = document.createElement('button'); el.className = 'cam-pin'; el.innerHTML = ICON.cam;
+    el.setAttribute('aria-label', 'Radar');
+    el.onclick = ev => { ev.stopPropagation(); toast('Radar (hız kamerası)' + (c.max ? ' · sınır ' + c.max + ' km/sa' : ''), 2500); };
+    camMarkers.push(new maplibregl.Marker({element:el}).setLngLat([c.lon, c.lat]).addTo(map));
+  });
+}
 async function loadCameras(R){
   const seq = ++camSeq;
-  cams = []; camMarkers.forEach(m => m.remove()); camMarkers = [];
-  if(!R || settings.camWarn === false) return;
+  cams = []; refreshCamMarkers(); renderCamInfo();
+  if(!R || (settings.camShow === false && settings.camWarn === false)) return;
   const pts = []; let next = 0;
   const maxAlong = Math.min(R.total, 250000);
   for(let i = 0; i < R.coords.length && R.cum[i] <= maxAlong; i++){
     if(R.cum[i] >= next){ pts.push(R.coords[i][1].toFixed(5) + ',' + R.coords[i][0].toFixed(5)); next = R.cum[i] + 400; }
   }
   if(pts.length < 2) return;
-  const q = `[out:json][timeout:25];node["highway"="speed_camera"](around:80,${pts.join(',')});out;`;
   try{
-    const j = await overpass(q, 25000);
+    const j = await overpass(camQuery('around:80,' + pts.join(',')), 25000);
     if(seq !== camSeq || route !== R) return;
+    const seen = new Set();
     cams = (j.elements || []).map(el => {
-      const pr = projectOnRoute(R, {lat:el.lat, lon:el.lon}, 0);
-      const ms = parseInt((el.tags && el.tags.maxspeed) || '', 10);
-      return {lat:el.lat, lon:el.lon, along:pr.along, off:pr.off, max:isNaN(ms) ? null : ms, warned:false};
-    }).filter(c => c.off < 60).sort((a, b) => a.along - b.along);
-    cams.forEach(c => {
-      const el = document.createElement('div'); el.className = 'cam-pin'; el.innerHTML = ICON.cam;
-      camMarkers.push(new maplibregl.Marker({element:el}).setLngLat([c.lon, c.lat]).addTo(map));
-    });
+      const c = parseCam(el), pr = projectOnRoute(R, c, 0);
+      return Object.assign(c, {along:pr.along, off:pr.off, warned:false});
+    }).filter(c => { const k = c.lat.toFixed(4) + c.lon.toFixed(4); if(c.off >= 60 || seen.has(k)) return false; seen.add(k); return true; })
+      .sort((a, b) => a.along - b.along);
+    refreshCamMarkers(); renderCamInfo();
   }catch(e){}
+}
+async function loadNearCams(f){
+  if(settings.camShow === false || document.body.dataset.ui !== 'idle') return;
+  if(nearAt && hav(nearAt, f) < 2000 && Date.now() - nearAt.t < 10*60*1000) return;
+  nearAt = {lat:f.lat, lon:f.lon, t:Date.now()};
+  try{
+    const j = await overpass(camQuery(`around:6000,${f.lat.toFixed(5)},${f.lon.toFixed(5)}`), 20000);
+    nearCams = (j.elements || []).map(parseCam);
+    if(document.body.dataset.ui === 'idle') refreshCamMarkers();
+  }catch(e){ nearAt = null; }
+}
+function renderCamInfo(){
+  const el = $('#p-cams');
+  if(!el) return;
+  if(document.body.dataset.ui !== 'preview' || !cams.length || settings.camShow === false){ el.hidden = true; return; }
+  el.hidden = false; el.textContent = 'Rotada ' + cams.length + ' radar var';
 }
 function updateCameras(along, f){
   const box = $('#cam-alert');
-  const c = cams.find(c => !c.passed && c.along > along - 20);
   cams.forEach(c => { if(c.along < along - 20) c.passed = true; });
-  if(!c){ box.hidden = true; return; }
+  const c = cams.find(c => !c.passed);
+  if(!c || settings.camWarn === false){ box.hidden = true; return; }
   const d = c.along - along, warnAt = Math.max(400, f.speed*20);
   if(d <= warnAt){
     box.hidden = false;
-    $('#cam-text').textContent = 'Hız kamerası · ' + fmtDist(Math.max(0, d)) + (c.max ? ' · sınır ' + c.max : '');
-    if(!c.warned){ c.warned = true; speak(spokenDist(d) + ' sonra hız kamerası' + (c.max ? ', hız sınırı ' + c.max : '')); }
+    $('#cam-text').textContent = 'Radar · ' + fmtDist(Math.max(0, d)) + (c.max ? ' · sınır ' + c.max : '');
+    if(!c.warned){ c.warned = true; speak(spokenDist(d) + ' sonra radar' + (c.max ? ', hız sınırı ' + c.max : '')); }
   } else box.hidden = true;
 }
 function onRouteChanged(){
@@ -1431,36 +1518,106 @@ function onRouteChanged(){
   loadCameras(route);
 }
 function clearSafety(){
-  camSeq++; cams = []; camMarkers.forEach(m => m.remove()); camMarkers = [];
+  camSeq++; cams = []; refreshCamMarkers();
   $('#limit').hidden = true; $('#cam-alert').hidden = true; $('#spd').classList.remove('over');
 }
 
-/* ================= settings sheet ================= */
-const SETTING_ROWS = [
-  ['speedWarn', 'Hız sınırı uyarısı', 'Sınırı %10 aşınca sesli uyarır'],
-  ['camWarn', 'Hız kamerası uyarısı', 'Rotadaki kameraları 400 m önce bildirir'],
-  ['muted', 'Sesli yönlendirmeyi kapat', 'Sadece ekranda gösterir', true]
-];
-$('#btn-settings').onclick = () => {
+/* ================= motorcycle parking ================= */
+let parkMarker = null;
+function renderPark(){
+  const p = store.get('park', null);
+  $('#btn-park').classList.toggle('on', !!p);
+  $('#btn-park').setAttribute('aria-label', p ? 'Park yerini kaldır' : 'Park yerini kaydet');
+  if(parkMarker){ parkMarker.remove(); parkMarker = null; }
+  if(!p) return;
+  const el = document.createElement('button'); el.className = 'park-pin'; el.textContent = 'P'; el.setAttribute('aria-label', 'Motorumun park yeri');
+  el.onclick = ev => { ev.stopPropagation(); showPark(); };
+  parkMarker = new maplibregl.Marker({element:el, anchor:'bottom'}).setLngLat([p.lon, p.lat]).addTo(map);
+}
+$('#btn-park').onclick = async () => {
+  if(store.get('park', null)){
+    store.set('park', null); renderPark(); toast('Park yeri kaldırıldı', 2000); return;
+  }
+  const f = await waitPos(8000);
+  if(!f){ toast('Konum bulunamadı. Konum iznini kontrol et.'); return; }
+  store.set('park', {lat:f.lat, lon:f.lon, t:Date.now(), acc:Math.round(f.acc || 0)});
+  renderPark();
+  toast('Park yeri kaydedildi' + (f.acc > 40 ? ` (konum ±${Math.round(f.acc)} m)` : '') + '. Kaldırmak için tekrar bas.', 3500);
+};
+function showPark(){
+  const p = store.get('park', null); if(!p) return;
+  openSheet('Park yeri', 'Motorun burada');
+  const b = $('#s-body'), st = mk('div', 'stats');
+  const parked = new Date(p.t);
+  const sameDay = parked.toDateString() === new Date().toDateString();
+  [[clock(parked), sameDay ? 'Bugün park edildi' : parked.toLocaleDateString('tr-TR', {day:'numeric', month:'short'}) + ' tarihinde'],
+   [pos ? fmtDist(hav(pos, p)) : '—', 'Uzaklık']].forEach(([v, l]) => { const s = mk('div', 'stat'); s.append(mk('b', null, v), mk('span', null, l)); st.append(s); });
+  const acts = mk('div', 's-actions');
+  const walk = mk('button', 'primary wide', 'Yürüyerek git');
+  walk.onclick = () => chooseDestination({name:'Motorum (park yeri)', lat:p.lat, lon:p.lon, walk:true});
+  const show = mk('button', 'secondary', 'Haritada göster');
+  show.onclick = () => { closeSheet(); map.easeTo({center:[p.lon, p.lat], zoom:17, bearing:0, pitch:0, duration:600}); };
+  const del = mk('button', 'secondary', 'Kaldır');
+  del.onclick = () => { store.set('park', null); renderPark(); closeSheet(); toast('Park yeri kaldırıldı', 2000); };
+  acts.append(walk, show, del); b.append(st, acts);
+}
+
+/* ================= settings ================= */
+function settingSwitch(b, title, sub, get, set){
+  const row = mk('button', 'row'), m = mk('div', 'r-main');
+  m.append(mk('div', 'r-t', title), mk('div', 'r-s', sub));
+  const sw = mk('span', 'switch'); sw.setAttribute('aria-hidden', 'true');
+  row.setAttribute('role', 'switch'); row.setAttribute('aria-checked', get());
+  row.onclick = () => { const now = row.getAttribute('aria-checked') !== 'true'; row.setAttribute('aria-checked', now); set(now); saveSettings(); };
+  row.append(m, sw); b.append(row);
+}
+function settingChoice(b, title, sub, options, get, set){
+  const box = mk('div', 'set-group'); box.append(mk('div', 'r-t', title));
+  if(sub) box.append(mk('div', 'r-s', sub));
+  const seg = mk('div', 'seg'); seg.style.gridTemplateColumns = `repeat(${options.length},1fr)`;
+  options.forEach(([val, label]) => {
+    const btn = mk('button', null, label); btn.setAttribute('aria-pressed', get() === val);
+    btn.onclick = () => { set(val); saveSettings(); seg.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed', x === btn)); };
+    seg.append(btn);
+  });
+  box.append(seg); b.append(box);
+}
+function settingDanger(parent, label, confirmLabel, action){
+  const btn = mk('button', 'secondary', label);
+  btn.onclick = () => {
+    if(!btn.dataset.c){ btn.dataset.c = '1'; btn.textContent = confirmLabel; setTimeout(() => { delete btn.dataset.c; btn.textContent = label; }, 3000); return; }
+    action(); btn.textContent = 'Silindi'; delete btn.dataset.c;
+  };
+  parent.append(btn);
+}
+function openSettings(){
   openSheet('MotoNav v' + VERSION, 'Ayarlar');
   const b = $('#s-body');
-  SETTING_ROWS.forEach(([key, title, sub, invert]) => {
-    const row = mk('button', 'row'), m = mk('div', 'r-main');
-    m.append(mk('div', 'r-t', title), mk('div', 'r-s', sub));
-    const on = invert ? !!settings[key] : settings[key] !== false;
-    const sw = mk('span', 'switch'); sw.setAttribute('aria-hidden', 'true');
-    row.setAttribute('role', 'switch'); row.setAttribute('aria-checked', on);
-    row.onclick = () => {
-      const now = row.getAttribute('aria-checked') !== 'true';
-      row.setAttribute('aria-checked', now);
-      if(invert) settings[key] = now; else if(now) delete settings[key]; else settings[key] = false;
-      if(key === 'camWarn' && navigating) (now ? loadCameras(route) : clearSafety());
-      saveSettings(); renderMuteBtn();
-    };
-    row.append(m, sw); b.append(row);
-  });
-  b.append(mk('p', 's-msg', 'Hız sınırı ve kamera bilgisi OpenStreetMap verisinden gelir; her yolda bulunmayabilir. Kayıtlı yerlerin ve sürüşlerin yalnızca bu telefonda saklanır.'));
-};
+  b.append(mk('div', 'eyebrow set-h', 'Araç ve hız'));
+  settingChoice(b, 'Araç sınıfı', 'Hız sınırları bu sınıfa göre gösterilir', [['L3', 'Motosiklet (50 cc üstü)'], ['L1', 'Motorlu bisiklet (≤50 cc)']],
+    () => vclass(), v => { settings.vclass = v; bannedWarned = null; });
+  settingSwitch(b, 'Hız sınırı tabelası', 'Motosiklet kurallarına göre sınırı gösterir', () => settings.limitShow !== false, v => { if(v) delete settings.limitShow; else settings.limitShow = false; });
+  settingSwitch(b, 'Hız aşımı sesli uyarısı', 'Sınırı aşınca "Hız sınırı 50" der', () => settings.speedWarn !== false, v => { if(v) delete settings.speedWarn; else settings.speedWarn = false; });
+  settingChoice(b, 'Uyarı toleransı', 'Yönetmelik %10 aşımı cezalandırmaz', [[0, 'Sınırda'], [5, '+%5'], [10, '+%10']],
+    () => settings.tol ?? 10, v => { settings.tol = v; });
+  b.append(mk('div', 'eyebrow set-h', 'Radar'));
+  settingSwitch(b, 'Radarları haritada göster', 'Çevredeki ve rotadaki hız kameraları', () => settings.camShow !== false,
+    v => { if(v) delete settings.camShow; else settings.camShow = false; nearAt = null; if(pos) loadNearCams(pos); if(route) loadCameras(route); else refreshCamMarkers(); });
+  settingSwitch(b, 'Radar sesli uyarısı', 'Radara 400 m kala bildirir', () => settings.camWarn !== false, v => { if(v) delete settings.camWarn; else settings.camWarn = false; });
+  b.append(mk('div', 'eyebrow set-h', 'Ses ve görünüm'));
+  settingSwitch(b, 'Sesli yönlendirme', 'Kapalıysa yalnızca ekranda gösterir', () => !settings.muted, v => { settings.muted = !v; renderMuteBtn(); });
+  settingChoice(b, 'Harita teması', null, [[null, 'Otomatik'], ['day', 'Gündüz'], ['night', 'Gece']],
+    () => settings.mode ?? null, v => { settings.mode = v; applyMode(); renderModeBtn(); });
+  settingChoice(b, 'Sürüş görünümü', null, [['follow3d', '3B'], ['top', 'Üstten'], ['north', 'Kuzey yukarı']],
+    () => settings.view, v => { settings.view = v; renderViewBtn(); });
+  b.append(mk('div', 'eyebrow set-h', 'Veriler (yalnızca bu telefonda)'));
+  const acts = mk('div', 's-actions');
+  settingDanger(acts, 'Sürüş kayıtlarını sil', 'Emin misin?', () => store.set('trips', []));
+  settingDanger(acts, 'Kayıtlı yerleri sil', 'Emin misin?', () => { store.set('favs', []); store.set('recent', []); renderChips(); });
+  b.append(acts);
+  b.append(mk('p', 's-msg', 'Hız sınırları Karayolları Trafik Yönetmeliği Md. 100\'e göre: motosiklet şehir içi 50, çift yönlü yol 80, bölünmüş yol 90, otoyol 100 km/sa; motorlu bisiklet 30 / 45 / 45, otoyola giremez. Yol tipi ve levhalar OpenStreetMap verisinden gelir; her yerde bulunmayabilir. Levha varsa ve motosiklet sınırından düşükse levha esas alınır.'));
+}
+$('#btn-settings').onclick = openSettings;
 
 /* ================= navigation ================= */
 function newNavState(){ return {seg:0, next:1, ann:{}, off:0, lastReroute:0, rerouting:false, onRoute:false, startT:Date.now()}; }
@@ -1470,11 +1627,11 @@ function startNav(demo){
   navigating = true; follow = true; navState = newNavState();
   routes = [route]; selRoute = 0; drawRoute(); closeSheet();
   setUI('nav'); $('#demo-tag').hidden = !demo;
-  if(!demo) recStart();
-  onRouteChanged();
+  if(!demo && !dest.walk) recStart();
+  if(!dest.walk) onRouteChanged(); else clearSafety();
   lockScreen();
   const first = route.mans[0];
-  setTimeout(() => speak('Sürüş başladı. ' + (first ? first.pre : '')), 150);
+  setTimeout(() => speak((dest.walk ? 'Yürüyüş başladı. ' : 'Sürüş başladı. ') + (first ? first.pre : '')), 150);
   if(demo) startDemo();
   else if(pos){ updateNav(pos); camera(pos); }
 }
@@ -1527,8 +1684,7 @@ function updateNav(f){
   const dist = Math.max(0, R.cum[man.idx] - along);
   const remain = Math.max(0, R.total - along);
 
-  updateLimit(f, pr.i);
-  updateCameras(along, f);
+  if(!dest.walk){ updateLimit(f, pr.i); updateCameras(along, f); }
 
   // maneuver card
   $('#m-dist').textContent = fmtDist(dist);
@@ -1562,7 +1718,7 @@ async function reroute(f, msg){
   if(msg || Date.now() - lastRerouteSpeech > 20000){ lastRerouteSpeech = Date.now(); speak(msg || 'Rota yeniden hesaplanıyor'); }
   try{
     const r = (await fetchRoutes(f, [...stops, dest], 0))[0];
-    r.tolls = estimateTolls(r);
+    r.tolls = dest.walk ? null : estimateTolls(r);
     if(!navigating) return;
     route = r; drawRoute(); navState = newNavState(); navState.lastReroute = Date.now(); navState.onRoute = true;
     onRouteChanged();
@@ -1618,12 +1774,13 @@ if('serviceWorker' in navigator && location.protocol === 'https:'){
 /* ================= boot ================= */
 syncToggles(); renderChips(); startGPS(); enableCompass();
 document.querySelector('#cam-alert .cam-ico').innerHTML = ICON.cam;
+renderPark();
 setTimeout(() => loadFacilities(), 2500);
 if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.test(navigator.userAgent) && !store.get('hintShown', false)){
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Yeni: hız sınırı tabelası ve aşım uyarısı, hız kamerası uyarısı, ayarlar ekranı, otomatik gece/gündüz; birçok hata düzeltmesi.';
+const WHATS_NEW = 'Yeni: motosiklet kurallarına göre hız sınırı, radarlar haritada, genişletilmiş ayarlar, motor park düğmesi.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
