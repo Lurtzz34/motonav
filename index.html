@@ -61,6 +61,7 @@ body:not([data-ui="nav"]) .only-nav{display:none!important}
 #results li button:active{background:var(--panel-2)}
 #results .r-name{font-weight:700;font-size:17px}
 #results .r-sub{font-size:14px;color:var(--muted)}
+#results .r-hint{padding:10px 12px;margin-bottom:4px;border-radius:12px;background:color-mix(in srgb,var(--amber) 22%,var(--panel));font-size:14px;line-height:1.4}
 #results .r-kind{font-style:normal;font:700 11px var(--f-ui);letter-spacing:.05em;text-transform:uppercase;background:var(--panel-2);color:var(--muted);padding:2px 6px;border-radius:6px;margin-left:8px;vertical-align:2px}
 #results .r-empty{padding:14px 12px;color:var(--muted)}
 #chips{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:none}
@@ -300,7 +301,7 @@ body[data-ui="preview"] .maplibregl-ctrl-bottom-right{display:none}
 
 <script>
 'use strict';
-const VERSION = '1.5.1';
+const VERSION = '1.5.2';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -742,12 +743,37 @@ async function searchNominatim(q){
       kind:PLACE_KIND[x.type] || PLACE_KIND[x.addresstype] || '', poi:POI_KEYS.includes(x.category) && !!x.name, src:'n'};
   });
 }
+// Map links pasted from Apple Maps, Google Maps or OpenStreetMap: take the coordinates straight from the link.
+function parseMapLink(text){
+  const t = text.trim();
+  if(!/^(https?:\/\/|maps\.|www\.)/i.test(t) && !/maps\.apple|google\.[a-z.]+\/maps|goo\.gl|openstreetmap/i.test(t)) return null;
+  let url; try{ url = new URL(/^https?:/i.test(t) ? t : 'https://' + t); }catch(e){ return null; }
+  if(/(^|\.)goo\.gl$/i.test(url.hostname)) return {short:true};
+  const P = url.searchParams, num = '(-?\\d{1,3}\\.\\d+)';
+  const pair = v => { const m = (v || '').match(new RegExp('^\\s*' + num + '\\s*,\\s*' + num)); return m ? {lat:+m[1], lon:+m[2]} : null; };
+  let c = pair(P.get('coordinate')) || pair(P.get('ll')) || pair(P.get('q')) || pair(P.get('destination')) || pair(P.get('query')) || pair(P.get('daddr')) || pair(P.get('sll'));
+  if(!c && P.get('mlat')) c = {lat:+P.get('mlat'), lon:+P.get('mlon')};
+  if(!c){ const m = url.href.match(new RegExp('@' + num + ',' + num)); if(m) c = {lat:+m[1], lon:+m[2]}; }
+  if(!c){ const m = url.href.match(new RegExp('!3d' + num + '!4d' + num)); if(m) c = {lat:+m[1], lon:+m[2]}; }
+  if(!c || Math.abs(c.lat) > 90 || Math.abs(c.lon) > 180) return {bad:true};
+  let name = P.get('name') || P.get('q') || '';
+  if(!name){ const m = url.pathname.match(/\/place\/([^/@]+)/); if(m) name = decodeURIComponent(m[1].replace(/\+/g, ' ')); }
+  if(!name || pair(name)) name = (P.get('address') || '').split(',')[0] || 'Paylaşılan konum';
+  return {name, sub:P.get('address') || 'Harita linkinden', lat:c.lat, lon:c.lon, kind:'Link'};
+}
 async function runSearch(){
   const q = qEl.value.trim();
   const seq = ++searchSeq;
   if(q.length < 3){ $('#results').hidden = true; return; }
   const m = q.match(/^\s*(-?\d{1,2}(?:\.\d+)?)\s*[,; ]\s*(-?\d{1,3}(?:\.\d+)?)\s*$/);
   if(m){ renderResults([{name:'Koordinat', sub:q, lat:+m[1], lon:+m[2]}]); return; }
+  const link = parseMapLink(q);
+  if(link){
+    if(link.short) renderResults([], 'Kısa Google linkleri açılamıyor. Apple Haritalar\'da yeri bulup Paylaş › Kopyala ile linki yapıştır ya da Google Haritalar\'da yere basılı tutup koordinatı kopyala.');
+    else if(link.bad) renderResults([], 'Bu linkte konum bilgisi bulunamadı.');
+    else renderResults([link]);
+    return;
+  }
   const [a, b] = await Promise.allSettled([searchPhoton(q), searchNominatim(q)]);
   if(seq !== searchSeq) return;
   if(a.status === 'rejected' && b.status === 'rejected'){ renderResults(null); return; }
@@ -760,11 +786,14 @@ async function runSearch(){
     if(dup){ if(!dup.kind && h.kind) dup.kind = h.kind; if(!dup.sub && h.sub) dup.sub = h.sub; return; }
     out.push(h);
   });
-  renderResults(out.slice(0, 8));
+  const toks = fold(q).split(' ').filter(Boolean);
+  const exact = out.some(h => toks.every(t => fold(h.name).includes(t)) || toks.filter(t => fold(h.name).includes(t)).length >= Math.max(1, toks.length - 1) && h.poi);
+  renderResults(out.slice(0, 8), exact ? null : 'Aradığın yer bu haritada kayıtlı olmayabilir. Apple Haritalar\'da bulup Paylaş › Kopyala ile linki buraya yapıştırabilirsin. Haritada noktaya dokunarak da hedef seçebilirsin.');
 }
-function renderResults(list){
+function renderResults(list, hint){
   const ul = $('#results'); ul.innerHTML = '';
-  if(!list || !list.length){
+  if(hint){ const li = document.createElement('li'); li.className = 'r-hint'; li.textContent = hint; ul.append(li); }
+  if(!list || (!list.length && !hint)){
     const li = document.createElement('li'); li.className = 'r-empty';
     li.textContent = list ? 'Sonuç bulunamadı. Mahalle veya ilçe ekleyerek dene.' : 'Arama yapılamadı. İnternet bağlantını kontrol et.';
     ul.append(li);
@@ -1836,7 +1865,7 @@ if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.tes
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Düzeltme: arama artık iki kaynaktan bakıp en doğru yeri üste koyuyor; sürüşte geçilen yol çizgisi ve radarlar siliniyor.';
+const WHATS_NEW = 'Yeni: Apple Haritalar veya Google Haritalar paylaşım linkini arama kutusuna yapıştırarak hedef seçebilirsin.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
