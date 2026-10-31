@@ -291,7 +291,7 @@ input{-webkit-user-select:text;user-select:text}
   <div id="p-cams" class="cam-row" hidden></div>
   <div id="p-alts" hidden></div>
   <div class="seg" id="p-style" role="group" aria-label="Rota tipi">
-    <button data-style="fast">Hızlı</button><button data-style="short">Kısa</button><button data-style="curvy">Virajlı</button>
+    <button data-style="main">Ana yollar</button><button data-style="side">Ara sokaklar</button><button data-style="curvy">Virajlı</button>
   </div>
   <div id="p-stops" hidden></div>
   <button id="p-addstop" class="add-stop">+ Ara durak ekle</button>
@@ -341,7 +341,7 @@ input{-webkit-user-select:text;user-select:text}
 
 <script>
 'use strict';
-const VERSION = '1.6.0';
+const VERSION = '1.7.0';
 
 /* ================= helpers ================= */
 const $ = s => document.querySelector(s);
@@ -349,7 +349,8 @@ const store = {
   get(k, d){ try{ const v = localStorage.getItem('mn_'+k); return v ? JSON.parse(v) : d; }catch(e){ return d; } },
   set(k, v){ try{ localStorage.setItem('mn_'+k, JSON.stringify(v)); return true; }catch(e){ return false; } }
 };
-const settings = Object.assign({avoidHighways:false, avoidTolls:false, muted:false, mode:null, routeStyle:'fast'}, store.get('settings', {}));
+const settings = Object.assign({avoidHighways:false, avoidTolls:false, muted:false, mode:null, routeStyle:'main'}, store.get('settings', {}));
+settings.routeStyle = ({fast:'main', short:'side'})[settings.routeStyle] || settings.routeStyle || 'main';
 const saveSettings = () => store.set('settings', settings);
 
 function fetchT(url, ms = 12000){
@@ -898,13 +899,20 @@ $('#p-fav').onclick = () => {
 };
 
 /* ================= routing ================= */
+// Ana yollar: main roads, few turns, no residential shortcuts (default)
+// Ara sokaklar: smaller streets and more direct lines are fine
+// Virajlı: away from motorways and main roads
+// No live traffic is used: a motorcycle passes queues, so the route is never bent around a jam.
 function costingOptions(costing){
   if(costing === 'pedestrian') return {};
-  const st = settings.routeStyle || 'fast';
-  const o = {use_tolls:settings.avoidTolls ? 0 : 0.5, use_highways:(settings.avoidHighways || st === 'curvy') ? 0 : 1};
-  if(costing === 'motorcycle'){ o.use_trails = 0; if(st === 'curvy') o.use_primary = 0.15; }
-  if(st === 'short') o.shortest = true;
-  if(costing === 'motor_scooter'){ o.top_speed = 45; o.use_primary = st === 'curvy' ? 0.15 : 0.5; delete o.use_highways; }
+  const st = settings.routeStyle || 'main';
+  const hw = (settings.avoidHighways || st === 'curvy') ? 0 : st === 'side' ? 0.3 : 1;
+  const o = {use_tolls:settings.avoidTolls ? 0 : 0.5, use_highways:hw, use_tracks:0, use_ferry:0.3};
+  if(st === 'main'){ o.use_living_streets = 0; o.service_penalty = 90; o.maneuver_penalty = 30; o.gate_penalty = 600; }
+  if(st === 'side'){ o.use_living_streets = 0.7; o.service_penalty = 10; o.maneuver_penalty = 2; }
+  if(st === 'curvy'){ o.use_living_streets = 0.1; o.maneuver_penalty = 10; }
+  if(costing === 'motorcycle'){ o.use_trails = 0; o.use_primary = st === 'main' ? 1 : st === 'side' ? 0.2 : 0.1; }
+  if(costing === 'motor_scooter'){ o.top_speed = 45; o.use_primary = st === 'main' ? 0.8 : 0.15; delete o.use_highways; }
   return o;
 }
 // pts = [stop1, ..., destination]; returns an array of routes (first = recommended)
@@ -964,7 +972,7 @@ async function osrmRoutes(from, pts, alternates){
   if(!r.ok) throw new Error('OSRM ' + r.status);
   const j = await r.json();
   if(!j.routes || !j.routes.length) throw new Error('OSRM: rota yok');
-  if(settings.avoidHighways || settings.avoidTolls || settings.routeStyle !== 'fast')
+  if(settings.avoidHighways || settings.avoidTolls || settings.routeStyle !== 'main')
     toast('Yedek rota servisi kullanıldı; rota tipi ve kaçınma seçenekleri uygulanamadı.', 5000);
   const names = pts.map(p => p.name);
   return j.routes.map(rt => parseOsrm(rt, names, pts));
@@ -1040,10 +1048,34 @@ const FACILITIES = [
   {id:'b15', name:'15 Temmuz Şehitler Köprüsü', re:/15 Temmuz|Boğaziçi Köprüsü/i, fee:25, eastOnly:true, approx:[29.0347, 41.0453], box:[41.035,29.015,41.055,29.050]},
   {id:'fsm', name:'Fatih Sultan Mehmet Köprüsü', re:/Fatih Sultan Mehmet/i, fee:25, eastOnly:true, approx:[29.0614, 41.0911], box:[41.080,29.045,41.100,29.080]},
   {id:'yss', name:'Yavuz Sultan Selim Köprüsü', re:/Yavuz Sultan Selim/i, fee:75, approx:[29.1117, 41.2019], box:[41.190,29.090,41.215,29.135]},
-  {id:'ogz', name:'Osmangazi Köprüsü', re:/Osmangazi/i, fee:820, approx:[29.5147, 40.7519], box:[40.725,29.495,40.780,29.535], radius:1000},
-  {id:'c15', name:'1915 Çanakkale Köprüsü', re:/1915|Çanakkale Köprüsü/i, fee:295, approx:[26.6436, 40.3364], box:[40.300,26.580,40.380,26.720], radius:1500, needToll:true},
+  {id:'ogz', name:'Osmangazi Köprüsü', re:/Osmangazi/i, fee:800, approx:[29.5157, 40.7552], box:[40.725,29.490,40.785,29.545]},
+  {id:'c15', name:'1915 Çanakkale Köprüsü', re:/1915|Çanakkale Köprüsü/i, fee:295, approx:[26.6328, 40.3383], box:[40.300,26.580,40.380,26.700]},
   {id:'avr', name:'Avrasya Tüneli', re:/Avrasya/i, fee:257.40, night:128.70, approx:[28.9950, 41.0000], box:[40.975,28.940,41.015,29.060]}
 ];
+const feeOf = F => { const v = settings.fees && settings.fees[F.id]; return typeof v === 'number' && v >= 0 ? v : F.fee; };
+// A line laid on the water at each bridge (İzmit Bay, Dardanelles). A route that crosses it by land is on the bridge.
+// Works from the route shape alone, so it does not depend on how the bridge is tagged in the map data.
+const WATER_LINES = {
+  ogz:[[29.492, 40.7552], [29.540, 40.7552]],
+  c15:[[26.603, 40.3170], [26.6328, 40.3383], [26.660, 40.3575]]
+};
+function waterCrossing(R, line){
+  const c = R.coords, ferries = R.mans.filter(m => m.ferry).map(m => [R.cum[m.idx], R.cum[m.end]]);
+  const lo = [Math.min(...line.map(p => p[0])) - 0.01, Math.min(...line.map(p => p[1])) - 0.01];
+  const hi = [Math.max(...line.map(p => p[0])) + 0.01, Math.max(...line.map(p => p[1])) + 0.01];
+  for(let i = 0; i < c.length - 1; i++){
+    const a = c[i], b = c[i+1];
+    if(Math.max(a[0], b[0]) < lo[0] || Math.min(a[0], b[0]) > hi[0] || Math.max(a[1], b[1]) < lo[1] || Math.min(a[1], b[1]) > hi[1]) continue;
+    for(let k = 0; k < line.length - 1; k++){
+      const t = segCross(a, b, line[k], line[k+1]);
+      if(t < 0) continue;
+      const along = R.cum[i] + t*(R.cum[i+1] - R.cum[i]);
+      if(ferries.some(([f0, f1]) => along >= f0 - 50 && along <= f1 + 50)) continue;
+      return along;
+    }
+  }
+  return null;
+}
 // Rough line down the middle of the Bosphorus (lon, lat), used to tell which crossing a route takes.
 const BOSPHORUS = [[28.985,40.985],[29.002,41.006],[29.0041,41.0211],[29.015,41.036],[29.0347,41.0453],[29.047,41.058],[29.052,41.077],[29.0614,41.0911],[29.068,41.112],[29.075,41.140],[29.072,41.170],[29.1117,41.2019],[29.13,41.235]];
 const bosId = lat => lat < 41.03 ? 'avr' : lat < 41.07 ? 'b15' : lat < 41.15 ? 'fsm' : 'yss';
@@ -1104,15 +1136,15 @@ function classifyNet(refs, pt){
 }
 let facGeom = store.get('facGeom', null), facLoading = null;
 function loadFacilities(){
-  if(facGeom && facGeom.v === 2 && Date.now() - facGeom.t < 180*864e5) return Promise.resolve(facGeom);
+  if(facGeom && facGeom.v === 3 && Date.now() - facGeom.t < 180*864e5) return Promise.resolve(facGeom);
   if(facLoading) return facLoading;
   const parts = FACILITIES.map(f => `way["highway"]["name"~"Köprü|Tünel|Avrasya",i](${f.box.join(',')});`).join('');
   const q = `[out:json][timeout:30];(${parts});out geom;`;
   facLoading = overpass(q, 35000).then(j => {
-      const g = {t:Date.now(), v:2};
+      const g = {t:Date.now(), v:3};
       (j.elements || []).forEach(w => {
         const nm = (w.tags && w.tags.name) || '';
-        if(!w.geometry || (w.tags.bridge !== 'yes' && !w.tags.tunnel && !/Avrasya/i.test(nm))) return;
+        if(!w.geometry || (!w.tags.bridge && !w.tags.tunnel && !/Avrasya/i.test(nm))) return;
         const mid = w.geometry[Math.floor(w.geometry.length/2)];
         const F = FACILITIES.find(f => f.re.test(nm) && mid.lat >= f.box[0] && mid.lat <= f.box[2] && mid.lon >= f.box[1] && mid.lon <= f.box[3]);
         if(!F) return;
@@ -1124,7 +1156,11 @@ function loadFacilities(){
   return facLoading;
 }
 function matchFacility(R, F, crossings){
-  const pts = facGeom && facGeom.v === 2 && facGeom[F.id];
+  if(WATER_LINES[F.id]){
+    const x = waterCrossing(R, WATER_LINES[F.id]);
+    if(x != null) return {from:Math.max(0, x - 1300), to:Math.min(R.total, x + 1300), east:true};
+  }
+  const pts = facGeom && facGeom.v >= 2 && facGeom[F.id];
   if(pts && pts.length){
     let lo = Infinity, hi = -Infinity, hits = 0;
     const step = Math.max(1, Math.floor(pts.length / 80));
@@ -1139,22 +1175,18 @@ function matchFacility(R, F, crossings){
     const x = crossings.find(c => bosId(c.lat) === F.id);
     return x ? {from:Math.max(0, x.along - 300), to:Math.min(R.total, x.along + 300), east:x.east} : null;
   }
-  // others: near the bridge centre (over water)
-  const pr = projectOnRoute(R, {lon:F.approx[0], lat:F.approx[1]}, 0);
-  if(pr.off > (F.radius || 500)) return null;
-  if(F.needToll && !R.tollSegs.some(s => pr.along >= s.from - 500 && pr.along <= s.to + 500)) return null;
-  return {from:Math.max(0, pr.along - 400), to:Math.min(R.total, pr.along + 400), east:true};
+  return null;
 }
 function estimateTolls(R){
   const items = [], spans = [], crossings = bosphorusCrossings(R);
   FACILITIES.forEach(F => {
     const m = matchFacility(R, F, crossings); if(!m) return;
     spans.push(m);
-    let fee = F.fee, note = '';
+    let fee = feeOf(F), note = '';
     if(F.eastOnly && !m.east){ fee = 0; note = 'Asya → Avrupa yönü ücretsiz'; }
     if(F.night){
       const t = new Date(Date.now() + R.time * (m.from / Math.max(1, R.total)) * 1000);
-      if(t.getHours() < 5){ fee = F.night; note = 'Gece tarifesi (00:00–04:59)'; }
+      if(t.getHours() < 5){ fee = Math.round(feeOf(F) * F.night / F.fee * 100)/100; note = 'Gece tarifesi (00:00–04:59)'; }
     }
     items.push({kind:'fac', name:F.name, fee, note, from:m.from, to:m.to});
   });
@@ -1215,7 +1247,7 @@ function showTollSheet(R){
   if(!T.items.length) b.append(mk('p', 's-msg', 'Bu rotada ücretli kesim var ama motosiklet ücreti hesaplanamadı.'));
   const tot = mk('div', 'row total'); tot.append(mk('div', 'r-main r-t', 'Toplam'), mk('b', 'fee', (T.estimate ? '≈ ' : '') + fmtTL(T.total)));
   b.append(tot);
-  b.append(mk('p', 's-msg', `${TOLL_TARIFF} tarifesi (KGM). Köprü ve tünel ücretleri kesindir. Otoyollarda ücret giriş ve çıkış gişesine göre değiştiği için kilometre üzerinden tahmin edilir. Geçişler HGS ile yapılır. 15 Temmuz ve FSM köprüleri yalnızca Avrupa → Asya yönünde ücretlidir; Avrasya Tüneli gece 00:00–04:59 arası yarı fiyattır.`));
+  b.append(mk('p', 's-msg', `${TOLL_TARIFF} tarifesi (KGM); Osmangazi gişede görülen güncel tutarla. Köprü ve tünel ücretleri sabittir, Ayarlar › Geçiş ücretleri'nden değiştirebilirsin. Otoyollarda ücret giriş ve çıkış gişesine göre değiştiği için kilometre üzerinden tahmin edilir. Geçişler HGS ile yapılır. 15 Temmuz ve FSM köprüleri yalnızca Avrupa → Asya yönünde ücretlidir; Avrasya Tüneli gece 00:00–04:59 arası yarı fiyattır.`));
 }
 
 /* ================= preview ================= */
@@ -1255,7 +1287,7 @@ async function computePreview(){
     $('#p-go').disabled = $('#p-demo').disabled = false;
     $('#p-go').textContent = d.walk ? 'Yürüyüşü başlat' : 'Sürüşü başlat';
     fitRoute();
-    if(!(facGeom && facGeom.v === 2)){
+    if(!(facGeom && facGeom.v === 3)){
       loadFacilities().then(g => {
         if(!g || routes !== rs || navigating) return;
         if(!d.walk){ rs.forEach(r => r.tolls = estimateTolls(r)); selectRoute(selRoute); }
@@ -1306,7 +1338,7 @@ function renderStops(){
   box.hidden = !stops.length;
 }
 function syncToggles(){
-  const st = settings.routeStyle || 'fast';
+  const st = settings.routeStyle || 'main';
   document.querySelectorAll('#p-style button').forEach(b => b.setAttribute('aria-pressed', b.dataset.style === st));
   $('#t-hw').setAttribute('aria-pressed', settings.avoidHighways || st === 'curvy');
   $('#t-hw').disabled = st === 'curvy';
@@ -1765,6 +1797,23 @@ function openSettings(){
     () => settings.mode ?? null, v => { settings.mode = v; applyMode(); renderModeBtn(); });
   settingChoice(b, 'Sürüş görünümü', null, [['follow3d', '3B'], ['top', 'Üstten'], ['north', 'Kuzey yukarı']],
     () => settings.view, v => { settings.view = v; renderViewBtn(); });
+  b.append(mk('div', 'eyebrow set-h', 'Rota'));
+  settingChoice(b, 'Varsayılan rota', 'Trafik hesaba katılmaz; motor sıkışıklıkta ilerleyebildiği için rota sıkışıklık yüzünden ara sokaklara kaçmaz',
+    [['main', 'Ana yollar'], ['side', 'Ara sokaklar'], ['curvy', 'Virajlı']], () => settings.routeStyle, v => { settings.routeStyle = v; syncToggles(); });
+  b.append(mk('div', 'eyebrow set-h', 'Geçiş ücretleri (motosiklet)'));
+  const fees = mk('div', 'set-group');
+  fees.append(mk('div', 'r-s', 'Gişede farklı bir ücret görürsen buradan düzelt; rota hesapları bu tutarları kullanır.'));
+  FACILITIES.forEach(F => {
+    const cur = feeOf(F);
+    fees.append(numberField(F.name + (F.eastOnly ? ' (Avrupa → Asya)' : F.night ? ' (gündüz)' : ''), cur, '0.01', '₺', v => {
+      settings.fees = settings.fees || {};
+      if(Math.abs(v - F.fee) < 0.005) delete settings.fees[F.id]; else settings.fees[F.id] = v;
+      saveSettings();
+    }).wrap);
+  });
+  const resetFees = mk('button', 'secondary', 'Varsayılan ücretlere dön');
+  resetFees.onclick = () => { settings.fees = {}; saveSettings(); openSettings(); };
+  fees.append(resetFees); b.append(fees);
   b.append(mk('div', 'eyebrow set-h', 'Veriler (yalnızca bu telefonda)'));
   const acts = mk('div', 's-actions');
   settingDanger(acts, 'Sürüş kayıtlarını sil', 'Emin misin?', () => store.set('trips', []));
@@ -2385,7 +2434,7 @@ if(!window.matchMedia('(display-mode: standalone)').matches && /iPhone|iPad/.tes
   store.set('hintShown', true);
   setTimeout(() => toast('Uygulama gibi kullanmak için: Paylaş › Ana Ekrana Ekle', 7000), 1500);
 }
-const WHATS_NEW = 'Yeni: Menü düğmesi — yakıt menzili, bakım takibi, sürüş istatistikleri, GPX rotaları, yedekleme. Rotaya istediğin yeri ara durak ekleyebilirsin.';
+const WHATS_NEW = 'Yeni: rotalar varsayılan olarak ana yollardan (Ara sokaklar ayrı seçenek), Osmangazi ve 1915 köprüleri artık algılanıyor, köprü ücretleri Ayarlar\'dan düzenlenebilir.';
 const seenVersion = store.get('seenVersion', null);
 if(seenVersion && seenVersion !== VERSION) setTimeout(() => toast('MotoNav ' + VERSION + ' — ' + WHATS_NEW, 9000), 1200);
 store.set('seenVersion', VERSION);
